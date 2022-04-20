@@ -523,7 +523,27 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 				print(session.run(R))
 			if train_step % 10 == 0:
 				print(str(train_step) + " minibatches completed")
-
+			
+			offsets = 0
+			weights = 0
+			if (provided_decoder_type == "NAMS_full" or provided_decoder_type == "NAMS_relaxed" or provided_decoder_type == "NAMS_simple"):
+				offsets = session.run(decoder.B_cv)
+				weights = session.run(decoder.W_cv)
+			elif (provided_decoder_type == "FNNMS" or provided_decoder_type == "RNNMS"):
+				weights = session.run(decoder.W_cv)
+			elif (provided_decoder_type == "FNOMS" or provided_decoder_type == "RNOMS"):
+				offsets = session.run(decoder.B_cv)
+			# save weights to pickle and mat
+			B_cv = offsets
+			W_cv = weights
+			weights_arr = {'B_cv':B_cv, 'W_cv':W_cv}
+			# breakpoint()
+			if (adapt == 0 and args.use_saved_weights == 0 and train_step % 1000 == 0):
+				mat_filename = "saved_models/mat/int/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(train_step) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".mat"
+				sio.savemat(mat_filename,weights_arr)
+				pkl_filename = "saved_models/pkl/int/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(train_step) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".pkl"
+				outfile = open(pkl_filename, 'wb')
+				pickle.dump(weights_arr,outfile)
 			train_step += 1
 		
 		print("Trained decoder on " + str(train_step) + " minibatches.\n")
@@ -734,16 +754,16 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 		W_cv = weights
 		weights_arr = {'B_cv':B_cv, 'W_cv':W_cv}
 		if (adapt == 0 and args.use_saved_weights == 0):
-			mat_filename = args.saved_model + ".mat"#saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + ".mat"
+			mat_filename = "saved_models/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".mat"
 			sio.savemat(mat_filename,weights_arr)
-			pkl_filename = args.saved_model + ".pkl"#"saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
+			pkl_filename = "saved_models/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".pkl"
 			outfile = open(pkl_filename, 'wb')
 			pickle.dump(weights_arr,outfile)
 			outfile.close()
 		elif (adapt == 1 and args.use_saved_weights == 0):
-			mat_filename = "saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + ".mat"
+			mat_filename = "saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".mat"
 			sio.savemat(mat_filename,weights_arr)
-			pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
+			pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + ".pkl"
 			outfile = open(pkl_filename, 'wb')
 			pickle.dump(weights_arr,outfile)
 			outfile.close()
