@@ -366,36 +366,33 @@ if SUM_PRODUCT:
 if MIN_SUM:
 	if decoder.decoder_type == "FNNMS":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
-		if (adapt == 1):
-			decoder.W_cv = tf.Variable(decoder_saved.W_cv)
 	
 	if decoder.decoder_type == "NAMS_full":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
 		decoder.B_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
-		if (adapt == 1):
-			decoder.W_cv = tf.Variable(decoder_saved.W_cv)
-			decoder.B_cv = tf.Variable(decoder_saved.B_cv)
+		
 	if decoder.decoder_type == "NAMS_relaxed":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
 		decoder.B_cv = tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
-		if (adapt == 1):
-			decoder.W_cv = tf.Variable(decoder_saved.W_cv)
-			decoder.B_cv = tf.Variable(decoder_saved.B_cv)
+		
 	if decoder.decoder_type == "NAMS_simple":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([1],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
 		decoder.B_cv = tf.Variable(tf.truncated_normal([1],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
-		if (adapt == 1):
-			decoder.W_cv = tf.Variable(decoder_saved.W_cv)
-			decoder.B_cv = tf.Variable(decoder_saved.B_cv)
+	
+	if (decoder.decoder_type == "NAMS_full" or decoder.decoder_type == "NAMS_relaxed" or decoder.decoder_type == "NAMS_simple"):
+		if (args.use_saved_weights == 1):
+			decoder.W_cv = tf.Variable(decoder_saved['W_cv'])
+			decoder.B_cv = tf.Variable(decoder_saved['B_cv'])
 
 	if decoder.decoder_type == "FNOMS":
 		decoder.B_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0/num_edges))
-
+		if (args.use_saved_weights == 1):
+			decoder.B_cv = tf.Variable(decoder_saved['B_cv'])
 	if decoder.decoder_type == "RNNMS":
 		decoder.W_cv = tf.nn.softplus(tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed)))#tf.Variable(0.0,dtype=tf.float32)#
 		
 	if decoder.decoder_type == "RNOMS":
-		decoder.B_cv = tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0)) #tf.Variable(0.0,dtype=tf.float32)#
+		decoder.B_cv = tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed)) #tf.Variable(0.0,dtype=tf.float32)#
 
 if decoder.relaxed:
 	decoder.relaxation_factors = tf.Variable(0.0,dtype=tf.float32)
@@ -720,6 +717,7 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 	for element in FERs:
 		out_file.write(str(element) + "\t")
 	out_file.write(" ];\n\n")
+	out_file.close()
 	if (not (SUM_PRODUCT or provided_decoder_type == "MinSum")):
 		offsets = 0
 		weights = 0
@@ -730,7 +728,7 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 			weights = session.run(decoder.W_cv)
 		elif (provided_decoder_type == "FNOMS" or provided_decoder_type == "RNOMS"):
 			offsets = session.run(decoder.B_cv)
-		breakpoint()
+		# breakpoint()
 		# save weights to pickle and mat
 		B_cv = offsets
 		W_cv = weights
