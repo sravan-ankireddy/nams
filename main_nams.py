@@ -10,6 +10,7 @@ import sys
 from tensorflow.python.framework import ops
 from helper_functions import load_code, syndrome
 import os
+import argparse
 import scipy.io as sio
 import pickle 
 
@@ -52,36 +53,73 @@ if NO_SIGMA_SCALING_TEST:
 else:
 	print("Scaling test input by 2/sigma")
 
-seed = int(sys.argv[1])
-np.random.seed(seed)
-snr_lo = float(sys.argv[2])
-snr_hi = float(sys.argv[3])
-snr_step = float(sys.argv[4])
-min_frame_errors = int(sys.argv[5])
-max_frames = float(sys.argv[6])
-num_iterations = int(sys.argv[7])
-H_filename = sys.argv[8]
-G_filename = sys.argv[9]
-output_filename = sys.argv[10]
-L = float(sys.argv[11])
-train_steps = int(sys.argv[12])
-adapt_steps = int(sys.argv[13])
-provided_decoder_type = sys.argv[14]
-start_lr = float(sys.argv[15])
-ETU_data_train = int(sys.argv[16])
-ETU_data_test = int(sys.argv[17])
-adapt = str(sys.argv[18])
 
-if (ETU_data_train == 1):
-	chan_train = "ETU"
+def get_args():
+	parser = argparse.ArgumentParser()
+
+	parser.add_argument('-seed', type=int, default=0)
+	parser.add_argument('-eb_n0_train_lo', type=float, default=1)
+	parser.add_argument('-eb_n0_train_hi', type=float, default=10)
+	parser.add_argument('-eb_n0_test_lo', type=float, default=1)
+	parser.add_argument('-eb_n0_test_hi', type=float, default=10)
+	parser.add_argument('-eb_n0_step', type=float, default=1)
+	parser.add_argument('-min_frame_errors', type=int, default=5e2)
+	parser.add_argument('-max_frames', type=float, default=5e5)
+	parser.add_argument('-num_iterations', type=int, default=5)
+	parser.add_argument('-H_filename', type=str, default='codes/BCH_63_36.alist')
+	parser.add_argument('-G_filename', type=str, default='codes/BCH_63_36.gmat')
+	parser.add_argument('-L', type=float, default=0.5)
+	parser.add_argument('-total_train_steps', type=int, default=200)
+	parser.add_argument('-samples_per_snr', type=int, default=10)
+	parser.add_argument('-training', type=int, default=1)
+	parser.add_argument('-testing', type=int, default=1)
+	parser.add_argument('-adapt_steps', type=int, default=50)
+	parser.add_argument('-learning_rate', type=float, default=0.01)
+	parser.add_argument('-batch_size', type=int, default=120)
+	parser.add_argument('-testing_batch_size', type=int, default=2400)
+	parser.add_argument('-chan_train', type=str, default='ETU')
+	parser.add_argument('-chan_test', type=str, default='ETU')
+	parser.add_argument('-decoder_type', type=str, default='NAMS_full')
+	parser.add_argument('-adapt', type=int, default=0)
+	parser.add_argument('-use_saved_weights', type=int, default=0)
+	parser.add_argument('-saved_model', type=str, default='saved_weights/pkl/weights_FNOMS_ch_tr_AWGN_st_30000_5_lr_0.01.pkl')
+	parser.add_argument('-saved_model_for_adapt', type=str, default='saved_weights/pkl/weights_FNOMS_ch_tr_AWGN_st_30000_5_lr_0.01.pkl')
+
+	#modifications
+	parser.add_argument('-softplus', type=int, default=0)
+	parser.add_argument('-relu', type=int, default=0)
+	parser.add_argument('-w_relu', type=int, default=1)
+
+	args = parser.parse_args()
+
+	return args	
+
+args = get_args()
+
+# seed = args.seed
+# np.random.seed(seed)
+snr_train_lo = args.eb_n0_train_lo
+snr_train_hi = args.eb_n0_train_hi
+snr_test_lo = args.eb_n0_test_lo
+snr_test_hi = args.eb_n0_test_hi
+snr_step = args.eb_n0_step
+min_frame_errors = args.min_frame_errors
+max_frames = args.max_frames
+num_iterations = args.num_iterations
+H_filename = args.H_filename
+G_filename = args.G_filename
+L = args.L
+total_train_steps = args.total_train_steps
+adapt_steps = args.adapt_steps
+provided_decoder_type = args.decoder_type
+start_lr = args.learning_rate
+adapt = args.adapt
+chan_train = args.chan_train
+chan_test = args.chan_test
+if (args.training == 0):
+	TRAINING = False
 else:
-	chan_train = "AWGN"
-if (ETU_data_test == 1):
-	chan_test = "ETU"
-else:
-	chan_test = "AWGN"
-
-
+	TRAINING = True
 if (provided_decoder_type == "SPA"):
 	SUM_PRODUCT = True
 	MIN_SUM = not SUM_PRODUCT
@@ -115,7 +153,7 @@ class Decoder:
 		self.relaxed = relaxed
 
 # decoder parameters
-batch_size = 120
+batch_size = args.batch_size
 tf_train_dataset = tf.placeholder(tf.float32, shape=(n,batch_size))
 tf_train_labels = tf.placeholder(tf.float32, shape=(n,batch_size))#tf.placeholder(tf.float32, shape=(num_iterations,n,batch_size))
 
@@ -193,25 +231,42 @@ def compute_cv(vc, iteration):
 		prods = tf.stack(prod_list)
 		mins = tf.stack(min_list)
 		if decoder.decoder_type == "RNOMS" or decoder.decoder_type == "NAMS_relaxed" or decoder.decoder_type == "NAMS_simple":
-			# offsets = tf.nn.softplus(decoder.B_cv)
 			offsets = decoder.B_cv
-			mins = tf.nn.relu(mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size]))
+			if (args.softplus == 1):
+				offsets = tf.nn.softplus(decoder.B_cv)
+			if (args.relu == 0):
+				mins = mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size])
+			else:
+				mins = tf.nn.relu(mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size]))
 		elif decoder.decoder_type == "FNOMS" or decoder.decoder_type == "NAMS_full":
 			# check the effect of removing softplus
-			offsets = tf.nn.softplus(decoder.B_cv[iteration])
-			mins = tf.nn.relu(mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size]))
+			offsets = decoder.B_cv[iteration]
+			if (args.softplus == 1):
+				offsets = tf.nn.softplus(decoder.B_cv[iteration])
+			if (args.relu == 0):
+				mins = mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size])
+			else:
+				mins = tf.nn.relu(mins - tf.tile(tf.reshape(offsets,[-1,1]),[1,batch_size]))
 		cv = prods * mins
 	
 	new_order = np.zeros(num_edges).astype(int)
 	new_order[edge_order] = np.array(range(0,num_edges)).astype(int)
 	cv = tf.gather(cv,new_order)
 	
+	scaling = 1
 	if decoder.decoder_type == "RNSPA" or decoder.decoder_type == "RNNMS" or decoder.decoder_type == "NAMS_relaxed":
-		cv = cv * tf.tile(tf.reshape(decoder.W_cv,[-1,1]),[1,batch_size])
+		scaling = tf.tile(tf.reshape(decoder.W_cv,[-1,1]),[1,batch_size])
+		if (args.softplus == 1):
+			scaling = tf.tile(tf.reshape(tf.nn.softplus(decoder.W_cv),[-1,1]),[1,batch_size])
 	elif decoder.decoder_type == "FNSPA" or decoder.decoder_type == "FNNMS" or decoder.decoder_type == "NAMS_full":
-		cv = cv * tf.tile(tf.reshape(decoder.W_cv[iteration],[-1,1]),[1,batch_size])
+		scaling = tf.tile(tf.reshape(decoder.W_cv[iteration],[-1,1]),[1,batch_size])
+		if (args.softplus == 1):
+			scaling = tf.tile(tf.reshape(tf.nn.softplus(decoder.W_cv[iteration]),[-1,1]),[1,batch_size])
 	elif decoder.decoder_type == "NAMS_simple":
-		cv = cv * decoder.W_cv
+		scaling = decoder.W_cv
+		if (args.softplus == 1):
+			scaling = tf.nn.softplus(decoder.W_cv)
+	cv = cv * scaling
 	return cv
 
 # combine messages to get posterior LLRs
@@ -291,18 +346,23 @@ else: print("not relaxed")
 
 ## load previous saved models
 if (adapt == 1):
-	adapt_pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(adapt_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
-	infile = open(adapt_pkl_filename,'rb')
+	# adapt_pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(adapt_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
+	infile = open(args.saved_model_for_adapt,'rb')
 	decoder_saved = pickle.load(infile)
 	infile.close()
-	breakpoint()
+if (args.use_saved_weights == 1):
+	saved_model = args.saved_model + ".pkl"
+	print("loading previous saved weights ... ",saved_model)
+	infile = open(saved_model,'rb')
+	decoder_saved = pickle.load(infile)
+	infile.close()
 if SUM_PRODUCT:
 	if decoder.decoder_type == "FNSPA":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
 		
 	if decoder.decoder_type == "RNSPA":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))#tf.Variable(0.0,dtype=tf.float32)#
-		
+
 if MIN_SUM:
 	if decoder.decoder_type == "FNNMS":
 		decoder.W_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))
@@ -329,7 +389,7 @@ if MIN_SUM:
 			decoder.B_cv = tf.Variable(decoder_saved.B_cv)
 
 	if decoder.decoder_type == "FNOMS":
-		decoder.B_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0/num_edges))
+		decoder.B_cv = tf.Variable(tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, num_edges],dtype=tf.float32,stddev=1.0/num_edges))
 
 	if decoder.decoder_type == "RNNMS":
 		decoder.W_cv = tf.nn.softplus(tf.Variable(tf.truncated_normal([num_edges],dtype=tf.float32,stddev=1.0, seed=decoder.random_seed)))#tf.Variable(0.0,dtype=tf.float32)#
@@ -352,8 +412,8 @@ config = tf.ConfigProto(
 	)
 with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as session:
 	# simulate each SNR
-	SNRs = np.arange(snr_lo, snr_hi+snr_step, snr_step)
-	if (batch_size % len(SNRs)) != 0:
+	SNRs = np.arange(snr_train_lo, snr_train_hi+snr_step, snr_step)
+	if (batch_size % args.samples_per_snr) != 0:
 		print("********************")
 		print("********************")
 		print("error: batch size must divide by the number of SNRs to train on")
@@ -391,12 +451,12 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 	session.run(init)
 	
 	if TRAINING:
-		# train_steps = 10001
+		# total_train_steps = 10001
 		print("***********************")
-		print("Training decoder using " + str(train_steps) + " minibatches...")
+		print("Training decoder using " + str(total_train_steps) + " minibatches...")
 		print("***********************")
 
-		if (ETU_data_train == 1):
+		if (chan_train == "ETU"):
 			#load offline data
 			print ("Loading offline ETU data for training ... ")
 			lte_data_filename = "lte_data/BCH_63_36_ETU_data_train_enc_9_18.mat"
@@ -405,11 +465,10 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 			lte_data_filename = "lte_data/BCH_63_36_ETU_data_train_llr_9_18.mat"
 			data = sio.loadmat(lte_data_filename)
 			llr_data = np.array( data['llr'])
-
-		step = 0
-		while step < train_steps:
+		train_step = 0
+		while train_step < total_train_steps:
 			# generate random codewords
-			if (ETU_data_train == 0):
+			if (chan_train == "AWGN"):
 				if not ALL_ZEROS_CODEWORD_TRAINING:
 					# generate message
 					messages = np.random.randint(0,2,[k,batch_size])
@@ -432,11 +491,11 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 
 			# create minibatch with codewords from multiple SNRs
 			for i in range(0,len(SNRs)):
-				if (ETU_data_train == 1):
-					start_idx = int(step*batch_size/len(SNRs))
-					end_idx = int(start_idx + batch_size/len(SNRs))
-					snr_start_ind = int(snr_lo)-1
-					snr_end_ind = int(snr_hi)
+				if (chan_train == "ETU"):
+					start_idx = int(train_step*batch_size/args.samples_per_snr)
+					end_idx = int(start_idx + batch_size/args.samples_per_snr)
+					snr_start_ind = int(snr_train_lo)-1
+					snr_end_ind = int(snr_train_hi)
 					# messages = msg_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind]
 					codewords = enc_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind]
 					soft_input = llr_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind]
@@ -455,35 +514,32 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 						soft_input[:,start_idx:end_idx] = channel_information[:,start_idx:end_idx]
 					else:
 						soft_input[:,start_idx:end_idx] = 2.0*channel_information[:,start_idx:end_idx]/(sigma*sigma)
-				
-				# breakpoint()
-			# use offline data for ETU
-
 
 			# feed minibatch into BP and run SGD
 			batch_data = soft_input
 			batch_labels = codewords #codewords #codewords_repeated
 			feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+
 			[_] = session.run([optimizer], feed_dict=feed_dict) #,bp_output,syndrome_output,belief_propagation, soft_syndromes
 			# breakpoint()
 			if decoder.relaxed and TRAINING: 
 				print(session.run(R))
-			if step % 10 == 0:
-				print(str(step) + " minibatches completed")
+			if train_step % 10 == 0:
+				print(str(train_step) + " minibatches completed")
 
-			step += 1
+			train_step += 1
 		
-		print("Trained decoder on " + str(step) + " minibatches.\n")
+		print("Trained decoder on " + str(train_step) + " minibatches.\n")
 
 	# testing phase
 	print("***********************")
 	print("Testing decoder...")
 	print("***********************")
-	# snr_lo = 1
-	# snr_hi = 12
-	# SNRs = np.arange(snr_lo, snr_hi+snr_step, snr_step)
+	# snr_test_lo = 1
+	# snr_test_hi = 12
+	SNRs = np.arange(snr_test_lo, snr_test_hi+snr_step, snr_step)
 	# batch_size = 120
-	if (ETU_data_test == 1):
+	if (chan_test == "ETU"):
 		#load offline data
 		print ("Loading offline ETU data for testing ... ")
 		lte_data_filename = "lte_data/BCH_63_36_ETU_data_test_enc_9_18.mat"
@@ -510,7 +566,7 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 		# simulate frames
 		while ((FE < min_frame_errors) or (frame_count < 100000)) and (frame_count < max_frames):
 			frame_count += batch_size # use different batch size for test phase?
-			if (ETU_data_test == 1):
+			if (chan_test == "ETU"):
 				start_ind = frame_count-batch_size
 				end_ind = frame_count
 				# map snr to ind
@@ -594,36 +650,67 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 	print(FERs)	
 
 	out_file = open('master_out_nams_paper_random0.txt', 'a')
-	command = "%%%% command : chan train " + chan_train + " chan test " + chan_test + " " + str(snr_lo) + " " + str(snr_hi) + " " + str(max_frames) + " " + str(train_steps) + "_" + str(num_iterations) + " lr " + str(learning_rate) + " decoder : " + provided_decoder_type + "\n"
+	command = "%%%% command : chan train " + chan_train + " chan test " + chan_test + " " + str(snr_test_lo) + " " + str(snr_test_hi) + " " + str(max_frames) + " " + str(total_train_steps) + "_" + str(num_iterations) + " lr " + str(learning_rate) + " decoder : " + provided_decoder_type + " sf " + str(args.softplus) + " relu " + str(args.relu) + "\n"
 
 	out_file.write(command)
-	if (SUM_PRODUCT):
-		ber_prefix = "BERs_SPA" + " = ["
-		fer_prefix = "FERs_SPA" + " = ["
-	elif (provided_decoder_type == "MinSum"):
-		ber_prefix = "BERs_MinSum" + " = ["
-		fer_prefix = "FERs_MinSum" + " = ["
-	elif (provided_decoder_type == "FNOMS"):
-		ber_prefix = "BERs_FNOMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_FNOMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "RNOMS"):
-		ber_prefix = "BERs_RNOMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_RNOMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "FNNMS"):
-		ber_prefix = "BERs_FNNMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_FNNMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "RNNMS"):
-		ber_prefix = "BERs_RNNMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_RNNMS_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "NAMS_full"):
-		ber_prefix = "BERs_NAMS_full_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_NAMS_full_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "NAMS_relaxed"):
-		ber_prefix = "BERs_NAMS_relaxed_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_NAMS_relaxed_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-	elif (provided_decoder_type == "NAMS_simple"):
-		ber_prefix = "BERs_NAMS_simple_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
-		fer_prefix = "FERs_NAMS_simple_" + str(train_steps) + "_" + str(num_iterations) +  " = ["
+	if (chan_test == chan_train):
+		common_prefix = chan_test + "_" + str(total_train_steps) + "_" + str(num_iterations) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + " = ["
+		if (SUM_PRODUCT):
+			ber_prefix = "BERs_SPA_" + chan_test + " = ["
+			fer_prefix = "FERs_SPA_" + chan_test + " = ["
+		elif (provided_decoder_type == "MinSum"):
+			ber_prefix = "BERs_MinSum_" + chan_test + " = ["
+			fer_prefix = "FERs_MinSum_" + chan_test + " = ["
+		elif (provided_decoder_type == "FNOMS"):
+			ber_prefix = "BERs_FNOMS_" + common_prefix
+			fer_prefix = "FERs_FNOMS_" + common_prefix
+		elif (provided_decoder_type == "RNOMS"):
+			ber_prefix = "BERs_RNOMS_" + common_prefix
+			fer_prefix = "FERs_RNOMS_" + common_prefix
+		elif (provided_decoder_type == "FNNMS"):
+			ber_prefix = "BERs_FNNMS_" + common_prefix
+			fer_prefix = "FERs_FNNMS_" + common_prefix
+		elif (provided_decoder_type == "RNNMS"):
+			ber_prefix = "BERs_RNNMS_" + common_prefix
+			fer_prefix = "FERs_RNNMS_" + common_prefix
+		elif (provided_decoder_type == "NAMS_full"):
+			ber_prefix = "BERs_NAMS_full_" + common_prefix
+			fer_prefix = "FERs_NAMS_full_" + common_prefix
+		elif (provided_decoder_type == "NAMS_relaxed"):
+			ber_prefix = "BERs_NAMS_relaxed_" + common_prefix
+			fer_prefix = "FERs_NAMS_relaxed_" + common_prefix
+		elif (provided_decoder_type == "NAMS_simple"):
+			ber_prefix = "BERs_NAMS_simple_" + common_prefix
+			fer_prefix = "FERs_NAMS_simple_" + common_prefix
+	else:
+		common_prefix = chan_train + "_" + chan_test + "_" + str(total_train_steps) + "_" + str(num_iterations) + "_sf_" + str(args.softplus) + "_relu_" + str(args.relu) + " = ["
+		if (SUM_PRODUCT):
+			ber_prefix = "BERs_SPA_" + chan_train + "_" + chan_test + " = ["
+			fer_prefix = "FERs_SPA_" + chan_train + "_" + chan_test + " = ["
+		elif (provided_decoder_type == "MinSum"):
+			ber_prefix = "BERs_MinSum_" + chan_test + " = ["
+			fer_prefix = "FERs_MinSum_" + chan_test + " = ["
+		elif (provided_decoder_type == "FNOMS"):
+			ber_prefix = "BERs_FNOMS_" + common_prefix
+			fer_prefix = "FERs_FNOMS_" + common_prefix
+		elif (provided_decoder_type == "RNOMS"):
+			ber_prefix = "BERs_RNOMS_" + common_prefix
+			fer_prefix = "FERs_RNOMS_" + common_prefix
+		elif (provided_decoder_type == "FNNMS"):
+			ber_prefix = "BERs_FNNMS_" + common_prefix
+			fer_prefix = "FERs_FNNMS_" + common_prefix
+		elif (provided_decoder_type == "RNNMS"):
+			ber_prefix = "BERs_RNNMS_" + common_prefix
+			fer_prefix = "FERs_RNNMS_" + common_prefix
+		elif (provided_decoder_type == "NAMS_full"):
+			ber_prefix = "BERs_NAMS_full_" + common_prefix
+			fer_prefix = "FERs_NAMS_full_" + common_prefix
+		elif (provided_decoder_type == "NAMS_relaxed"):
+			ber_prefix = "BERs_NAMS_relaxed_" + common_prefix
+			fer_prefix = "FERs_NAMS_relaxed_" + common_prefix
+		elif (provided_decoder_type == "NAMS_simple"):
+			ber_prefix = "BERs_NAMS_simple_" + common_prefix
+			fer_prefix = "FERs_NAMS_simple_" + common_prefix
 	
 	out_file.write(ber_prefix)
 	for element in BERs:
@@ -643,15 +730,24 @@ with tf.Session(config=config) as session: #tf.Session(config=tf.ConfigProto(gpu
 			weights = session.run(decoder.W_cv)
 		elif (provided_decoder_type == "FNOMS" or provided_decoder_type == "RNOMS"):
 			offsets = session.run(decoder.B_cv)
+		breakpoint()
 		# save weights to pickle and mat
 		B_cv = offsets
 		W_cv = weights
 		weights_arr = {'B_cv':B_cv, 'W_cv':W_cv}
-		mat_filename = "saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(train_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + ".mat"
-		sio.savemat(mat_filename,weights_arr)
-		pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(train_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
-		outfile = open(pkl_filename, 'wb')
-		pickle.dump(weights_arr,outfile)
-		outfile.close()
+		if (adapt == 0 and args.use_saved_weights == 0):
+			mat_filename = args.saved_model + ".mat"#saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + ".mat"
+			sio.savemat(mat_filename,weights_arr)
+			pkl_filename = args.saved_model + ".pkl"#"saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
+			outfile = open(pkl_filename, 'wb')
+			pickle.dump(weights_arr,outfile)
+			outfile.close()
+		elif (adapt == 1 and args.use_saved_weights == 0):
+			mat_filename = "saved_weights/mat/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) + "_lr_" + str(learning_rate) + ".mat"
+			sio.savemat(mat_filename,weights_arr)
+			pkl_filename = "saved_weights/pkl/weights_" + provided_decoder_type + "_ch_tr_" + chan_train  + "_st_" + str(total_train_steps) + "_ch_ts_" + chan_test  + "_st_" + str(test_steps) + "_" + str(num_iterations) +"_lr_" + str(learning_rate) + ".pkl"
+			outfile = open(pkl_filename, 'wb')
+			pickle.dump(weights_arr,outfile)
+			outfile.close()
 
 
