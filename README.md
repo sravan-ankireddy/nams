@@ -1,5 +1,5 @@
 # nams
-Neural Augmented Min Sum based on Neural Offset Min Sum
+Neural Augmented Min-Sum based on Neural Offset Min Sum
 
 This repository includes:
 - A PyTorch implementation of augmenting min-sum decoder for linear block codes.
@@ -16,14 +16,14 @@ To generate the LTE data run the following command from MATLAB terminal:
 generate_lte_data
 '''
 
-## Training Neural Turbo decoder
+## Training Neural Min-Sum decoder
 
 Models are saved at data_files/saved_models. To train the model from scratch, run the following command, after setting appropriate parameters:
 '''
 python nams_train.py
 '''
 
-## Testing Neural Turbo decoder
+## Testing Neural Min-Sum decoder
 
 Results are saved at data_files/ber_data. To test the model using saved weights, run the following command, after setting appropriate parameters:
 '''
