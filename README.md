@@ -11,22 +11,22 @@ pip3 install -r requirements.txt
 ```
 ## Generating LTE data
 
-To generate the LTE data run the following command from MATLAB terminal:
-'''
+To generate the LTE data, run the following command from MATLAB terminal:
+```
 generate_lte_data
-'''
+```
 
 ## Training Neural Min-Sum decoder
 
 Models are saved at data_files/saved_models. To train the model from scratch, run the following command, after setting appropriate parameters:
-'''
+```
 python nams_train.py
-'''
+```
 
 ## Testing Neural Min-Sum decoder
 
 Results are saved at data_files/ber_data. To test the model using saved weights, run the following command, after setting appropriate parameters:
-'''
+```
 python nams_test.py
-'''
+```
 
