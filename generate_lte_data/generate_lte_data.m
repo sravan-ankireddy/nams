@@ -2,7 +2,7 @@ clear all;
 
 SNRs = 9:18;
 
-N = 10;
+N = 10; % 2GB size is met at N=4400
 n_blocks = 179;
 
 bch = 1;
