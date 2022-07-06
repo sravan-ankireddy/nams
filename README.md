@@ -1,5 +1,5 @@
 # nams
-Neural Augmented Min-Sum based on Neural Offset Min Sum
+Neural Augmented Min-Sum Decoding of Short Block Codes for Fading Channels : < a href="https://arxiv.org/abs/2205.10684"> Paper
 
 This repository includes:
 - A PyTorch implementation of augmenting min-sum decoder for linear block codes.
