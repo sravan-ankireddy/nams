@@ -1,0 +1,5 @@
+This code will implement a simple OFDM transmitter and receiver with only the essential parts:
+It will have a python implmentation for generatin the OFDM transmitter symbols which will have a preamble and a data section.
+The generated data can be saved into a bin file and used in gnuradio application to transmit through usrp sink.
+The usrp source will be used to received the data and saved into a bin file
+Another python based implementation of the receiver to symcronize the frames estimate the channel and decode the data.
