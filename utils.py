@@ -1,7 +1,6 @@
 import numpy as np
 np.random.seed(1)
 from scipy.io import loadmat
-import tensorflow as tf
 import torch.nn.functional as F
 import torch
 torch.manual_seed(1)
@@ -243,9 +242,7 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		data_ones = np.ones_like(codewords)
 		d0 = data_ones.shape[0]
 		d1 = data_ones.shape[1]
-		# fading_h = tf.sqrt(tf.random.randn(data_shape[0])**2 +  tf.random.randn(data_shape[0])**2)/tf.sqrt(3.14/2.0)
 		fading_h = np.sqrt(np.random.randn(d0)**2 +  np.random.randn(d0)**2)/np.sqrt(3.14/2.0)
-		# fading_h = fading_h.type(tf.FloatTensor).to(self.this_device)
 		fading_h = torch.tensor(fading_h)
 		received_codewords = codewords*fading_h[:,None, None] + noise
 		soft_input = 2.0*received_codewords/(sigma*sigma)

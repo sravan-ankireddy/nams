@@ -1,46 +1,77 @@
 clear all;
 
-SNRs = 9:18;
-
-N = 10; % 2GB size is met at N=4400
 n_blocks = 179;
 
-bch = 1;
+bch = 0;
+
 chan = "ETU"; %EPA/EVA/ETU
+doppler_freq = 0;
+
 if (bch == 1)
     n = 63;
     k = 36;
     filename = "H_mat/BCH_" + n + "_" + k + ".alist";
+    N = 2800; % 2GB size is met at N=2800
+    if (chan == "ETU")
+        SNRs = 15:30;
+    elseif (chan == "EVA")
+        SNRs = 10:25;
+    end
 else
-    n = 128;
-    k = 64;
+    % n = 128;
+    % k = 64;
+    % N = 2000; % 2GB size is met at N=2000
+    % filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
+    % if (chan == "ETU")
+    % SNRs = 7:16;
+    % elseif (chan == "EVA")
+    %     SNRs = 10:25;
+    % end
+    n = 384;
+    k = 320;
+    N = 700; % 2GB size is met at N=2000
     filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
+    if (chan == "ETU")
+        SNRs = 11:20;
+    elseif (chan == "EVA")
+        SNRs = 10:25;
+    end
 end
+
 H = alist2full(filename);
-G = null2(H);
+
+% Encoder and Decoder configs to use in built LDPC modules
+
+decodercfg = ldpcDecoderConfig(sparse(logical(H)),'norm-min-sum');
+
+encodercfg = ldpcEncoderConfig(decodercfg);
+
 code.N = N;
 code.n_blocks = n_blocks;
 code.n = n;
 code.k = k;
-code.G = double(G);
+
 code.H = double(H);
 
-msg = zeros(N*n_blocks,k,length(SNRs));
-rx = zeros(N*n_blocks,n,length(SNRs));
-enc = zeros(N*n_blocks,n,length(SNRs));
+code.encodercfg = encodercfg;
+code.decodercfg = decodercfg;
+
+msg = zeros(k,N*n_blocks,length(SNRs));
+enc = zeros(n,N*n_blocks,length(SNRs));
+rx = zeros(size(enc));
 llr = zeros(size(enc));
 
 tic;
+disp("Generating " + chan  + " Doppler " + doppler_freq + " data for SNR " + SNRs(1) + " to " + SNRs(end));
 % can be parallelized
-for i = 1:length(SNRs)
+parfor i = 1:length(SNRs)
     SNR = SNRs(i);
     
-    disp("Generating " + chan  + " data : SNR " + SNR);
+    disp("Generating " + chan  + " Doppler " + doppler_freq + " data : SNR " + SNR);
     c_type = 'ETU';
-    [msg(:,:,i), enc(:,:,i), rx(:,:,i)] = RUN_lte(SNR, c_type, code);
+    [msg(:,:,i), enc(:,:,i), rx(:,:,i)] = RUN_lte(SNR, c_type, doppler_freq, code);
     
 end
-delete(gcp('nocreate'));
 disp("Finished generating data");
 
 % demod using matlab bpsk demod
@@ -51,6 +82,8 @@ disp("Demodulating the data ... ");
 llr = reshape(bpskDemod(rx(:)),size(llr));
 
 disp(" ... done");
+
+disp("Saving the data ... ");
 lte_path = "lte_data/";
 if (bch == 1)
     prefix = lte_path + "BCH_" + n + "_" + k + "_";
@@ -63,51 +96,86 @@ block_size = (N/2)*n_blocks;
 start_ind = 1;
 end_ind = start_ind + block_size - 1;
 
+msg_ref = msg;
 enc_ref = enc;
 llr_ref = llr;
 
-enc = permute(enc_ref(start_ind:end_ind,:,:),[2 1 3]);
-llr = -1*permute(llr_ref(start_ind:end_ind,:,:),[2 1 3]);
+msg = msg_ref(:,start_ind:end_ind,:);
+enc = enc_ref(:,start_ind:end_ind,:);
+llr = -1*llr_ref(:,start_ind:end_ind,:); % modulation consistency
 
-filename = prefix + "ETU_data_train_" + SNRs(1) + "_" + SNRs(end) + ".mat";
-save(filename,'enc','llr')
+filename = prefix + chan + "_df_" + doppler_freq + "_data_train_" + SNRs(1) + "_" + SNRs(end) + ".mat";
+save(filename,'enc','llr');
 
 start_ind = end_ind + 1;
 end_ind = start_ind + block_size - 1;
-enc = permute(enc_ref(start_ind:end_ind,:,:),[2 1 3]);
-llr = -1*permute(llr_ref(start_ind:end_ind,:,:),[2 1 3]); %modulation consistency
 
-filename = prefix + "ETU_data_test_" + SNRs(1) + "_" + SNRs(end) + ".mat";
+msg = msg_ref(:,start_ind:end_ind,:);
+enc = enc_ref(:,start_ind:end_ind,:);
+llr = -1*llr_ref(:,start_ind:end_ind,:); % modulation consistency
+
+filename = prefix + chan + "_df_" + doppler_freq + "_data_test_" + SNRs(1) + "_" + SNRs(end) + ".mat";
 save(filename,'enc','llr')
+
+disp(" ... done");
+
+% sanity
+enc_est_raw = llr > 0;
+BER_raw = (enc ~= enc_est_raw);
+BER_raw = squeeze(mean(mean(BER_raw,2),1));
+disp("Sanity check - Raw BER : ")
+disp(BER_raw');
+
+% sanity minsum
+
+BER = zeros(size(SNRs));
+
+max_iter = 5;
+
+for i_SNR = 1:length(SNRs)
+    
+    msg = squeeze(msg_ref(:,:,i_SNR));
+    enc = squeeze(enc_ref(:,:,i_SNR));
+    llr = squeeze(llr_ref(:,:,i_SNR));
+    msg_est = ldpcDecode(llr,decodercfg,max_iter);
+
+    BER(i_SNR) = sum(msg ~= msg_est, 'all');
+end
+
+BER = BER/(N*n_blocks*k);
+
+disp("Sanity check - default normalised min-sum BER : ")
+disp(BER);
+
+BER_ms = BER;
+
+if (bch == 1)
+    prefix = lte_path + "BERs_ref_BCH_" + n + "_" + k + "_";
+else 
+    prefix = lte_path + "BERs_ref_LDPC_" + n + "_" + k + "_";
+end
+filename = prefix + chan + "_df_" + doppler_freq + "_data_" + SNRs(1) + "_" + SNRs(end) + ".mat";
+save(filename,'BER_ms');
 
 toc;
 
-function [msg_data, enc_data, llr_data] = RUN_lte(SNR, c_type, code)
+function [msg_data, enc_data, llr_data] = RUN_lte(SNR, c_type, doppler_freq, code)
 
-N = code.N;
-n_blocks = code.n_blocks;
-n = code.n;
-k = code.k;
-G = code.G;
-msg_data = randi([0 1],n_blocks*N,k);
-% whos msg_data
-enc_data = mod(msg_data*G',2);
-llr_data = zeros(size(enc_data));
+% Resetting seed for each SNR so that same channel is experienced across SNRs
+% Update initTime later to maintain continuity in the fading process
+rng('default');
 
-for i_N = 1:N
-    In = enc_data(1 + (i_N-1)*n_blocks: i_N*n_blocks,:)';
-    % round_num = 
-    inputBits = [In(:);randi([0 1],26028 - n_blocks*n,1)];
-    detLLR = lte_chan(inputBits, SNR, c_type);
-    detLLR = detLLR(1:n_blocks*n);
-    demodSignal = reshape(detLLR,n,n_blocks);
-    llr_data((i_N - 1)*n_blocks + 1: i_N*n_blocks, :) = demodSignal.';
-end
-
-end
-
-function detLLR = lte_chan(inputBits, SNRdB, c_type)
-
+%% Channel Model Configuration
+cfg.Seed = 1;                  % Channel seed : 0 = random seed
+cfg.NRxAnts = 1;               % 1 receive antenna
+cfg.DelayProfile = c_type;     % delay spread
+cfg.DopplerFreq = doppler_freq;% Doppler frequency
+cfg.MIMOCorrelation = 'Low';   % Low (no) MIMO correlation
+cfg.NTerms = 16;               % Oscillators used in fading model
+cfg.ModelType = 'GMEDS';       % Rayleigh fading model type
+cfg.InitPhase = 'Random';      % Random initial phases
+cfg.NormalizePathGains = 'On'; % Normalize delay profile power
+cfg.NormalizeTxAnts = 'On';    % Normalize for transmit antennas
 
 %% Cell-Wide Settings
 
@@ -117,26 +185,7 @@ enb.NCellID = 10;               % Cell ID
 enb.CyclicPrefix = 'Normal';    % Normal cyclic prefix
 enb.DuplexMode = 'FDD';         % FDD
 
-%% SNR Configuration
-SNR = 10^(SNRdB/20);    % Linear SNR
-rng('default');         % Configure random number generators
-
-
-%% Channel Model Configuration
-cfg.Seed = ceil(100*rand());                  % Channel seed
-cfg.NRxAnts = 1;               % 1 receive antenna
-cfg.DelayProfile = c_type;     % EVA delay spread
-cfg.DopplerFreq = 0;           % 120Hz Doppler frequency
-cfg.MIMOCorrelation = 'Low';   % Low (no) MIMO correlation
-cfg.InitTime = 0;              % Initialize at time zero
-cfg.NTerms = 16;               % Oscillators used in fading model
-cfg.ModelType = 'GMEDS';       % Rayleigh fading model type
-cfg.InitPhase = 'Random';      % Random initial phases
-cfg.NormalizePathGains = 'On'; % Normalize delay profile power
-cfg.NormalizeTxAnts = 'On';    % Normalize for transmit antennas
-
 %% Channel Estimator Configuration
-
 cec.PilotAverage = 'UserDefined'; % Pilot averaging method
 cec.FreqWindow = 9;               % Frequency averaging window in REs
 cec.TimeWindow = 9;               % Time averaging window in REs
@@ -146,15 +195,40 @@ cec.InterpWinSize = 3;            % Interpolate up to 3 subframes
 % simultaneously
 cec.InterpWindow = 'Centred';     % Interpolation windowing method
 
-%% Subframe Resource Grid Size
+N = code.N;
+n_blocks = code.n_blocks;
+n = code.n;
+k = code.k;
 
-gridsize = lteDLResourceGridSize(enb);
-K = gridsize(1);    % Number of subcarriers
-L = gridsize(2);    % Number of OFDM symbols in one subframe
-P = gridsize(3);    % Number of transmit antenna ports
+msg_data = randi([0 1],k,n_blocks*N);
+
+% whos msg_data
+enc_data = ldpcEncode(msg_data,code.encodercfg);
+llr_data = zeros(size(enc_data));
+
+% N Frames
+for i_N = 1:N
+    In = enc_data(:,1 + (i_N-1)*n_blocks: i_N*n_blocks);
+    % round_num = 
+    inputBits = [In(:);randi([0 1],26028*3 - n_blocks*n,1)];
+    detLLR = lte_chan(inputBits, SNR, i_N, cfg, enb, cec);
+    detLLR = detLLR(1:n_blocks*n);
+    demodSignal = reshape(detLLR,n,n_blocks);
+    llr_data(:,(i_N - 1)*n_blocks + 1: i_N*n_blocks) = demodSignal;
+end
+
+end
+
+function detLLR = lte_chan(inputBits, SNRdB, nFrame, cfg, enb, cec)
+
+%% SNR Configuration
+SNR = 10^(SNRdB/20);            % Linear SNR
+rng(nFrame);                    % Configure random number generators : for noise
+
+% Update this to maintain continuity in fading process between frames
+cfg.InitTime = (nFrame-1)*10e-3;
 
 %% Transmit Resource Grid
-
 txGrid = [];
 
 %% Payload Data Generation
@@ -169,7 +243,7 @@ inputSym = lteSymbolModulate(inputBits,'BPSK');
 %% Frame Generation
 X_new = 0;
 % For all subframes within the frame
-for sf = 0:10
+for sf = 0:30
     
     % Set subframe number
     enb.NSubframe = mod(sf,10);
@@ -244,10 +318,12 @@ enb.NSubframe = 0;
 eqGrid = lteEqualizeMMSE(rxGrid, estChannel, noiseEst);
 
 %% Frame Extraction
-detLLR = zeros(23752,1);
+detLLR = zeros(23752*3,1);
 X_new = 0;
 % For all subframes within the frame
-for sf = 0:9
+
+max_sf = size(eqGrid,2)/14-1;
+for sf = 0:max_sf
     
     % Set subframe number
     enb.NSubframe = mod(sf,10);
