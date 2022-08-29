@@ -6,6 +6,9 @@ import numpy as np
 import numpy.matlib as mnp
 import scipy.io as sio
 import pickle 
+import mat73
+import tracemalloc
+import gc
 
 np.random.seed(0)
 
@@ -413,6 +416,17 @@ def compute_cv(vc, iteration, batch_size):
 		else:
 			cv = prods * mins
 	cv = cv[new_order_cv,:]
+	# del cv_list
+	# del prod_list
+	# del min_list
+	# del B_cv_vec
+	# del W_cv_vec
+	# del offsets
+	# del scaling
+	# del temp
+	# del prod_chk_temp
+	# del sign_chk_temp
+	# gc.collect()
 	return cv
 
 # combine messages to get posterior LLRs
@@ -433,11 +447,20 @@ def marginalize(soft_input, cv, batch_size):
 	return soft_output
 
 def belief_propagation_iteration(soft_input, iteration, cv, m_t, batch_size):
+	# breakpoint()
 	# compute vc
 	vc = compute_vc(cv, soft_input, iteration, batch_size)
 	vc_prime = vc
-	# compute cv
+	# breakpoint()
+	# # compute cv
+	# tracemalloc.start()
 	cv = compute_cv(vc_prime, iteration, batch_size)
+	# snapshot = tracemalloc.take_snapshot()
+	# top_stats = snapshot.statistics('lineno')
+	# print("[ Top 10 ]")
+	# for stat in top_stats[:10]:
+	# 	print(stat)
+	# breakpoint()
 	soft_output = marginalize(soft_input, cv, batch_size)
 	iteration += 1
 
@@ -460,24 +483,34 @@ def nn_decode(soft_input,batch_size, batch_labels):
 		# FIX ME: Add a stopping criteria based on H*c = 0? for whole batch?
 	return soft_output, loss
 
+def nn_decode_test(soft_input,batch_size):
+	soft_output = soft_input
+	iteration = 0
+	cv = torch.zeros([num_edges,batch_size])
+	m_t = torch.zeros([num_edges,batch_size])
+
+	while ( iteration < num_iterations ):
+		[soft_input, soft_output, iteration, cv, m_t] = belief_propagation_iteration(soft_input, iteration, cv, m_t, batch_size)
+
+	return soft_output
+
 rate = float(k)/float(n)
 mod_bits = 1
 
 eb_n0_dB = np.arange(args.eb_n0_train_lo, args.eb_n0_train_hi+args.eb_n0_step, args.eb_n0_step)
 
 SNRs = eb_n0_to_snr(eb_n0_dB,rate,mod_bits)
-
-if (training_batch_size % len(SNRs)) != 0:
-    print("********************")
-    print("********************")
-    print("error: Training batch size must divide by the number of SNRs to train on")
-    print("********************")
-    print("********************")
+if (args.decoder_type == "neural_ms" and args.decoder_type == 1):
+	if (training_batch_size % len(SNRs)) != 0:
+		print("********************")
+		print("********************")
+		print("error: Training batch size must divide by the number of SNRs to train on")
+		print("********************")
+		print("********************")
 BERs = []
 SERs = []
 FERs = []
 loss_history = []
-
 
 if (args.adaptivity_training == 1):
 	# find the base channel 
@@ -521,7 +554,7 @@ if TRAINING :
 
 	if (args.use_offline_training_data == 1):
 		lte_data_filename = "generate_lte_data/lte_data/" + args.coding_scheme + "_" + str(n) + "_" + str(k) + "_"  + str(args.channel_type) + "_data_train_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
-		data = sio.loadmat(lte_data_filename)
+		data = mat73.loadmat(lte_data_filename)
 		enc_data = torch.tensor(data['enc']).to(device)
 		llr_data = torch.tensor( data['llr']).to(device)
 		# Adding singleton dimension for format matching
@@ -562,7 +595,7 @@ if TRAINING :
 
 	step = 0
 	if (args.continue_training == 1):
-		step = 15000+1
+		step = 19000+1
 	while step < steps:
 		# data selection/generation
 		if (args.use_offline_training_data == 1):
@@ -627,7 +660,7 @@ if TRAINING :
 		optimizer.step()
 
 		if step % 10 == 0:
-			loss_history.append(batch_loss)
+			loss_history.append(batch_loss.item())
 			print(str(step) + " minibatches completed")
 			print ("BCE loss :")
 			print (batch_loss)
@@ -686,6 +719,7 @@ if TRAINING :
 			if (args.freeze_weights == 1):
 				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
 			sio.savemat(filename_mat,weights)
+		# breakpoint()
 		step += 1
 
 	print("Trained decoder on " + str(step) + " minibatches.\n")
@@ -771,6 +805,7 @@ if TESTING :
 		print(args.saved_model_path)
 		sleep(2)
 		model.load_state_dict(torch.load(args.saved_model_path))
+
 		if (args.quantize_weights == 1):
 			model.W_cv = torch.nn.Parameter(torch.round(10*model.W_cv)/10)
 			model.B_cv = torch.nn.Parameter(torch.round(10*model.B_cv)/10)
@@ -787,19 +822,14 @@ if TESTING :
 	if (args.use_offline_testing_data == 1):
 		lte_data_filename = "generate_lte_data/lte_data/" + args.coding_scheme + "_" + str(n) + "_" + str(k) + "_"  + str(args.channel_type) + "_data_test_" + str(int(args.eb_n0_lo)) + "_" + str(int(args.eb_n0_hi)) + ".mat"
 		print("Using saved data from : ", lte_data_filename)
-		data = sio.loadmat(lte_data_filename)
-		enc_data = torch.tensor(data['enc']).to(device)
-		llr_data = torch.tensor( data['llr']).to(device)
-		# breakpoint()
-		# Adding singleton dimension for format matching
-		if (enc_data.dim() == 2):
-			enc_data = torch.unsqueeze(enc_data, 2)
-			llr_data = torch.unsqueeze(llr_data, 2)
-			SNRs = np.arange(args.eb_n0_hi, args.eb_n0_hi+args.eb_n0_step, args.eb_n0_step)
-		# breakpoint()
-		num_frames = np.shape(enc_data)[1]
-		# breakpoint()
-		max_frames = min(num_frames - testing_batch_size, max_frames)
+
+		data = mat73.loadmat(lte_data_filename)
+
+		# # Adding singleton dimension for format matching
+		# if (enc_data.dim() == 2):
+		# 	enc_data = torch.unsqueeze(enc_data, 2)
+		# 	llr_data = torch.unsqueeze(llr_data, 2)
+		# 	SNRs = np.arange(args.eb_n0_hi, args.eb_n0_hi+args.eb_n0_step, args.eb_n0_step)
 
 	for SNR in SNRs:
 		# simulate this SNR
@@ -811,6 +841,19 @@ if TESTING :
 		frame_errors_with_HDD = 0
 		symbol_errors = 0
 		FE = 0
+
+		# load data corresponding to this SNR
+		if (args.use_offline_testing_data == 1):
+			# map snr to ind
+			snr_ind = int(SNR)-int(args.eb_n0_lo)
+
+			enc_data = torch.tensor(data['enc'][:,:,snr_ind])
+			llr_data = torch.tensor(data['llr'][:,:,snr_ind])
+
+			# cap max_frames based on size of offline testing dataset
+			num_frames = np.shape(enc_data)[1]
+			max_frames = min(num_frames - testing_batch_size, max_frames)
+
 		# simulate frames
 		while ((FE < min_frame_errors) or (frame_count <300000)) and (frame_count < max_frames) :
 			frame_count += testing_batch_size
@@ -818,24 +861,21 @@ if TESTING :
 			if (args.use_offline_testing_data == 1):
 				start_ind = frame_count-testing_batch_size
 				end_ind = frame_count
-				# map snr to ind
-				snr_ind = int(SNR)-int(args.eb_n0_lo)
-				codewords = torch.squeeze(enc_data[:,start_ind:end_ind,snr_ind])
+
+				# codewords = enc_data[:,start_ind:end_ind]
+				# batch_data = lr_data[:,start_ind:end_ind]
+
 				# breakpoint()
-				llr_in = torch.squeeze(llr_data[:,start_ind:end_ind,snr_ind])
-				batch_data = llr_in.to(device)
 				if (args.decoder_type == "undec"):
-					llr_out = (llr_in > 0).to(device)
+					llr_out = (llr_in > 0)
 				else:
-					llr_out, loss_out = nn_decode(batch_data,testing_batch_size,codewords)
+					llr_out = nn_decode_test(llr_data[:,start_ind:end_ind].to(device),testing_batch_size)
 				received_codewords = (llr_out > 0)
 				# update bit error count and frame error count
-				errors = codewords.to(device) != received_codewords
+				errors = enc_data[:,start_ind:end_ind].to(device) != received_codewords
 				bit_errors += errors.sum()
 				frame_errors += (errors.sum(0) > 0).sum()
-				# breakpoint()
 				FE = frame_errors
-				# breakpoint()
 
 			else: 
 				if not args.force_all_zero:
@@ -937,7 +977,7 @@ if (args.grid_search == 1):
 	ind_var = 0
 	res_file_name = results_folder + "/BERs_"+str(args.coding_scheme)+"_"+chan_name+"_"+str(n)+"_"+str(k)+ "_SNR_"+ str(int(args.eb_n0_lo))+"_"+str(int(args.eb_n0_hi))+".mat"
 	if os.path.exists(res_file_name):
-		prev_data = sio.loadmat(res_file_name)
+		prev_data = mat73.loadmat(res_file_name)
 	else:
 		ind_var = 1
 		prev_data = np.zeros((1,len(SNRs)+2))
