@@ -1028,6 +1028,36 @@ if (args.save_ber_to_mat == 1):
 	BERs_data = {'BERs_data':cur_data}
 	sio.savemat(res_file_name, BERs_data)
 
+	ind_var = 0
+	chan_name = str(args.channel_type)
+	if (args.adaptivity_training == 1):
+		res_file_name = results_folder + "/FERs_"+str(args.coding_scheme)+"_"+chan_name+"_"+str(n)+"_"+str(k)+"_adapt_from_" + base_channel + "_nn_eq_" + str(args.nn_eq) + "_lr_" + str(args.learning_rate) + "_SNR_"+ str(int(args.eb_n0_lo))+"_"+str(int(args.eb_n0_hi))+".mat"
+	else:
+		res_file_name = results_folder + "/FERs_"+str(args.coding_scheme)+"_"+chan_name+"_"+str(n)+"_"+str(k)+ "_baseline_nn_eq_" + str(args.nn_eq) + "_lr_" + str(args.learning_rate) +  "_SNR_"+ str(int(args.eb_n0_lo))+"_"+str(int(args.eb_n0_hi))+".mat"
+
+	if os.path.exists(res_file_name):
+		prev_data = sio.loadmat(res_file_name)
+	else:
+		ind_var = 1
+		prev_data = np.zeros((1,len(SNRs)+3))
+		prev_data[0,0] = -100
+		prev_data[0,1] = -100
+		prev_data[0,2] = -100
+		prev_data[0,3:] = SNRs 
+	temp = np.zeros((1,len(SNRs)+3))
+	temp = np.zeros((1,len(SNRs)+3))
+	temp[0,0] = args.steps
+	temp[0,1] = args.learning_rate
+	temp[0,2] = args.entangle_weights
+	temp[0,3:] = FERs
+
+	if (ind_var == 0):
+		cur_data = np.concatenate([prev_data['FERs_data'],temp])
+	else:
+		cur_data = np.concatenate([prev_data,temp])
+	FERs_data = {'FERs_data':cur_data}
+	sio.savemat(res_file_name, FERs_data)
+
 # end time
 end = time.time()
 # total time taken

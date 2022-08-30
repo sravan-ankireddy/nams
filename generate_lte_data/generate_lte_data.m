@@ -4,6 +4,10 @@ n_blocks = 179;
 
 bch = 0;
 
+% num frames
+N = 1200;
+% N = 4800;
+
 chan = "ETU"; %EPA/EVA/ETU
 doppler_freq = 0;
 
@@ -11,7 +15,7 @@ if (bch == 1)
     n = 63;
     k = 36;
     filename = "H_mat/BCH_" + n + "_" + k + ".alist";
-    N = 2800; % 2GB size is met at N=2800
+
     if (chan == "ETU")
         SNRs = 15:30;
     elseif (chan == "EVA")
@@ -20,29 +24,53 @@ if (bch == 1)
 else
     % n = 128;
     % k = 64;
-    % N = 2000; % 2GB size is met at N=2000
+
     % filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
     % if (chan == "ETU")
-    % SNRs = 7:16;
+    % SNRs = 7:20;
     % elseif (chan == "EVA")
     %     SNRs = 10:25;
     % end
+
     n = 384;
     k = 320;
-    N = 700; % 2GB size is met at N=2000
+
     filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
     if (chan == "ETU")
-        SNRs = 11:20;
+        SNRs = 11:28;
     elseif (chan == "EVA")
         SNRs = 10:25;
     end
+
+    % n = 384;
+    % k = 288;
+
+    % filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
+    % if (chan == "ETU")
+    %     SNRs = 11:24;
+    % elseif (chan == "EVA")
+    %     SNRs = 10:25;
+    % end
+
+    % n = 384;
+    % k = 192;
+
+    % filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
+    % if (chan == "ETU")
+    %     SNRs = 3:12;
+    % elseif (chan == "EVA")
+    %     SNRs = 10:25;
+    % end
 end
 
 H = alist2full(filename);
 
 % Encoder and Decoder configs to use in built LDPC modules
-
 decodercfg = ldpcDecoderConfig(sparse(logical(H)),'norm-min-sum');
+decodercfg_nms = ldpcDecoderConfig(sparse(logical(H)),'norm-min-sum');
+decodercfg_oms = ldpcDecoderConfig(sparse(logical(H)),'offset-min-sum');
+decodercfg_bp = ldpcDecoderConfig(sparse(logical(H)),'bp');
+decodercfg_lbp = ldpcDecoderConfig(sparse(logical(H)),'layered-bp');
 
 encodercfg = ldpcEncoderConfig(decodercfg);
 
@@ -62,12 +90,12 @@ rx = zeros(size(enc));
 llr = zeros(size(enc));
 
 tic;
-disp("Generating " + chan  + " Doppler " + doppler_freq + " data for SNR " + SNRs(1) + " to " + SNRs(end));
+disp("Generating (" + code.n + ","+ code.k + ") " + chan  + " Doppler " + doppler_freq + " data for SNR " + SNRs(1) + " to " + SNRs(end));
 % can be parallelized
 parfor i = 1:length(SNRs)
     SNR = SNRs(i);
     
-    disp("Generating " + chan  + " Doppler " + doppler_freq + " data : SNR " + SNR);
+    disp("Generating (" + code.n + ","+ code.k + ") " + chan  + " Doppler " + doppler_freq + " data : SNR " + SNR);
     c_type = 'ETU';
     [msg(:,:,i), enc(:,:,i), rx(:,:,i)] = RUN_lte(SNR, c_type, doppler_freq, code);
     
@@ -105,7 +133,7 @@ enc = enc_ref(:,start_ind:end_ind,:);
 llr = -1*llr_ref(:,start_ind:end_ind,:); % modulation consistency
 
 filename = prefix + chan + "_df_" + doppler_freq + "_data_train_" + SNRs(1) + "_" + SNRs(end) + ".mat";
-save(filename,'enc','llr');
+save(filename,'enc','llr','-v7.3');
 
 start_ind = end_ind + 1;
 end_ind = start_ind + block_size - 1;
@@ -115,7 +143,7 @@ enc = enc_ref(:,start_ind:end_ind,:);
 llr = -1*llr_ref(:,start_ind:end_ind,:); % modulation consistency
 
 filename = prefix + chan + "_df_" + doppler_freq + "_data_test_" + SNRs(1) + "_" + SNRs(end) + ".mat";
-save(filename,'enc','llr')
+save(filename,'enc','llr','-v7.3')
 
 disp(" ... done");
 
@@ -125,26 +153,40 @@ BER_raw = (enc ~= enc_est_raw);
 BER_raw = squeeze(mean(mean(BER_raw,2),1));
 disp("Sanity check - Raw BER : ")
 disp(BER_raw');
+toc;
 
 % sanity minsum
 
-BER = zeros(size(SNRs));
+BER = zeros(4,length(SNRs));
 
 max_iter = 5;
 
+tic;
 for i_SNR = 1:length(SNRs)
     
     msg = squeeze(msg_ref(:,:,i_SNR));
     enc = squeeze(enc_ref(:,:,i_SNR));
     llr = squeeze(llr_ref(:,:,i_SNR));
-    msg_est = ldpcDecode(llr,decodercfg,max_iter);
 
-    BER(i_SNR) = sum(msg ~= msg_est, 'all');
+    disp("Decoding (" + code.n + ","+ code.k + ") " + chan  + " Doppler " + doppler_freq + " data : SNR " + SNRs(i_SNR));
+
+    msg_est = ldpcDecode(llr,decodercfg_nms,max_iter);
+    BER(1,i_SNR) = sum(msg ~= msg_est, 'all');
+
+    msg_est = ldpcDecode(llr,decodercfg_oms,max_iter);
+    BER(2,i_SNR) = sum(msg ~= msg_est, 'all');
+
+    msg_est = ldpcDecode(llr,decodercfg_bp,max_iter);
+    BER(3,i_SNR) = sum(msg ~= msg_est, 'all');
+
+    msg_est = ldpcDecode(llr,decodercfg,max_iter);
+    BER(4,i_SNR) = sum(msg ~= msg_est, 'all');
+    
 end
 
 BER = BER/(N*n_blocks*k);
 
-disp("Sanity check - default normalised min-sum BER : ")
+disp("Sanity check - default MATLAB decoder BER : nms, oms, bp, lbp")
 disp(BER);
 
 BER_ms = BER;
@@ -246,7 +288,7 @@ X_new = 0;
 for sf = 0:30
     
     % Set subframe number
-    enb.NSubframe = mod(sf,10);
+    enb.NSubframe = mod(sf,30);
     
     % Generate empty subframe
     subframe = lteDLResourceGrid(enb);
