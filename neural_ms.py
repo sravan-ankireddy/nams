@@ -476,7 +476,7 @@ def nn_decode(soft_input,batch_size, batch_labels):
 	cv = torch.zeros([num_edges,batch_size])
 	m_t = torch.zeros([num_edges,batch_size])
 	loss = 0
-	criterion = nn.BCEWithLogitsLoss()
+	criterion = nn.BCEWithLogitsLoss(reduction='mean')
 	while ( iteration < num_iterations ):
 		[soft_input, soft_output, iteration, cv, m_t] = belief_propagation_iteration(soft_input, iteration, cv, m_t, batch_size)
 		loss = loss + criterion(soft_output,batch_labels.float())
@@ -555,13 +555,14 @@ if TRAINING :
 	if (args.use_offline_training_data == 1):
 		lte_data_filename = "generate_lte_data/lte_data/" + args.coding_scheme + "_" + str(n) + "_" + str(k) + "_"  + str(args.channel_type) + "_data_train_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 		data = mat73.loadmat(lte_data_filename)
-		enc_data = torch.tensor(data['enc']).to(device)
-		llr_data = torch.tensor( data['llr']).to(device)
-		# Adding singleton dimension for format matching
-		if (enc_data.dim() == 2):
-			enc_data = torch.unsqueeze(enc_data, 2)
-			llr_data = torch.unsqueeze(llr_data, 2)
-		num_frames = np.shape(enc_data)[1]
+		enc_data = torch.tensor(data['enc'])
+		llr_data = torch.tensor( data['llr'])
+
+		# # Adding singleton dimension for format matching
+		# if (enc_data.dim() == 2):
+		# 	enc_data = torch.unsqueeze(enc_data, 2)
+		# 	llr_data = torch.unsqueeze(llr_data, 2)
+		
 	# if adapting, load the previous model for further training
 	if (args.adaptivity_training == 1 or args.continue_training == 1):
 		print("\n\n********* Loading the saved model for further training *********\n\n",args.saved_model_path,"\n\n")
@@ -603,8 +604,9 @@ if TRAINING :
 			end_idx = int(start_idx + training_batch_size/len(SNRs))
 			snr_start_ind = int(args.eb_n0_train_lo)-int(args.eb_n0_train_lo)
 			snr_end_ind = int(args.eb_n0_train_hi)-int(args.eb_n0_train_lo)+1
-			codewords = enc_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind]
-			llr_in = llr_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind]
+			codewords = enc_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
+			llr_in = llr_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
+
 			# concatenate the data along the SNR dimension
 			codewords = torch.reshape(codewords,[codewords.size(0),-1])
 			llr_in = torch.reshape(llr_in,[llr_in.size(0),-1])
@@ -648,13 +650,15 @@ if TRAINING :
 				sigma_vec[:,start_idx:end_idx] = sigma
 				SNR_vec[:,start_idx:end_idx] = SNRs[i]
 
+				llr_in = llr_in.to(device)
+				codewords = codewords.to(device)
+
 		# training starts
 		# perform gradient update for whole snr batch
-		batch_data = llr_in.to(device)
-		batch_labels = codewords.to(device)
-		soft_output, batch_loss = nn_decode(batch_data,training_batch_size,batch_labels)
+		soft_output, batch_loss = nn_decode(llr_in,training_batch_size,codewords)
 		optimizer.zero_grad()
 		batch_loss.backward()
+		breakpoint()
 		if (args.clip_grads == 1):
 			torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
 		optimizer.step()
@@ -847,8 +851,8 @@ if TESTING :
 			# map snr to ind
 			snr_ind = int(SNR)-int(args.eb_n0_lo)
 
-			enc_data = torch.tensor(data['enc'][:,:,snr_ind])
-			llr_data = torch.tensor(data['llr'][:,:,snr_ind])
+			enc_data = torch.tensor(data['enc'][:,:,snr_ind]).to(device)
+			llr_data = torch.tensor(data['llr'][:,:,snr_ind]).to(device)
 
 			# cap max_frames based on size of offline testing dataset
 			num_frames = np.shape(enc_data)[1]
@@ -869,10 +873,10 @@ if TESTING :
 				if (args.decoder_type == "undec"):
 					llr_out = (llr_in > 0)
 				else:
-					llr_out = nn_decode_test(llr_data[:,start_ind:end_ind].to(device),testing_batch_size)
+					llr_out = nn_decode_test(llr_data[:,start_ind:end_ind],testing_batch_size)
 				received_codewords = (llr_out > 0)
 				# update bit error count and frame error count
-				errors = enc_data[:,start_ind:end_ind].to(device) != received_codewords
+				errors = enc_data[:,start_ind:end_ind] != received_codewords
 				bit_errors += errors.sum()
 				frame_errors += (errors.sum(0) > 0).sum()
 				FE = frame_errors
