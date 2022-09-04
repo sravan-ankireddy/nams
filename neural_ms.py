@@ -206,8 +206,8 @@ if (args.adaptivity_training == 1):
 	args.continue_training = 0
 
 # Chosse the appropriate data_folders
-models_folder = "saved_models_sf_df"
-results_folder = "ber_data_sf_df"
+models_folder = "saved_models_sf_df_lte"
+results_folder = "ber_data_sf_df_lte"
 
 if (args.decoder_type == "neural_ms"):
 	if (args.training == 1):
@@ -658,7 +658,7 @@ if TRAINING :
 		soft_output, batch_loss = nn_decode(llr_in,training_batch_size,codewords)
 		optimizer.zero_grad()
 		batch_loss.backward()
-		breakpoint()
+
 		if (args.clip_grads == 1):
 			torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
 		optimizer.step()

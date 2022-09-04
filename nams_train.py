@@ -41,7 +41,7 @@ adapt_tr = "0"
 freeze_wt = "0"
 interf = "0"
 alpha = "0"
-nn_eq = "0"
+nn_eq = "1"
 ff_list = ["0"]
 lr_list = ["0.005"]#,"0.01"]
 
@@ -88,10 +88,10 @@ for mi in max_iter:
 							prefix = temp.split(".")
 							prefix = prefix[0]
 
-							if (channel_type == "ETU_df_0"):
-								training_batch_size = "160"
-								eb_n0_train_lo_tr = "15"
-								eb_n0_train_hi_tr = "30"
+							if (channel_type == "ETU_df_5"):
+								training_batch_size = "140"
+								eb_n0_train_lo_tr = "11"
+								eb_n0_train_hi_tr = "24"
 								offline_tr_data = "1"
 							elif (channel_type == "EVA_df_5"):
 								training_batch_size = "160"
@@ -146,7 +146,7 @@ for mi in max_iter:
 							else:
 								model_suffix = "_nn_eq_" + nn_eq + "_relu_" + relu + "_max_iter_" + mi + "_" + eb_n0_train_lo_tr + "_" + eb_n0_train_hi_tr + ".pt"
 							
-							for im in range(4):
+							for im in range(6):
 								filename = model_prefix + str(im) + model_suffix
 								saved_models_new.append(filename)
 							save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, lr, eb_n0_train_lo_tr, eb_n0_train_hi_tr, offline_tr_data, mi, steps_tr, relu, adapt_tr, freeze_wt, ff, saved_models_new)
@@ -164,11 +164,14 @@ for mi in max_iter:
 								# training_batch_size = "100"
 								# eb_n0_train_lo_tr = "3"
 								# eb_n0_train_hi_tr = "12"
-								training_batch_size = "140"
-								# eb_n0_train_lo_tr = "11"
-								# eb_n0_train_hi_tr = "24"
-								eb_n0_train_lo_tr = "7"
-								eb_n0_train_hi_tr = "20"
+								# training_batch_size = "160"
+								# eb_n0_train_lo_tr = "12"
+								# eb_n0_train_hi_tr = "27"
+								training_batch_size = "100"
+								eb_n0_train_lo_tr = "1"
+								eb_n0_train_hi_tr = "10"
+								# eb_n0_train_lo_tr = "7"
+								# eb_n0_train_hi_tr = "20"
 								offline_tr_data = "1"
 							elif (channel_type == "EVA_df_5"):
 								training_batch_size = "160"

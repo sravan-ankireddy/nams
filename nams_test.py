@@ -21,15 +21,15 @@ alpha = "0"
 relu = "1"
 # coding_scheme_list = ["BCH"]
 # channel_type_list = ["ETU_df_0"]#["AWGN","ETU","OTA"]
-# H_filename = ['H_G_mat/BCH_63_36.alist']
-# G_filename = ['H_G_mat/G_BCH_63_36.gmat']
+H_filename = ['H_G_mat/BCH_63_36.alist']
+G_filename = ['H_G_mat/G_BCH_63_36.gmat']
 
-coding_scheme_list = ["LDPC"]
+coding_scheme_list = ["BCH"]
 # channel_type_list = ["AWGN"]
-channel_type_list = ["ETU_df_0"]
+channel_type_list = ["ETU_df_5"]
 
-H_filename = ['H_G_mat/LDPC_128_64.alist']
-G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
+# H_filename = ['H_G_mat/LDPC_128_64.alist']
+# G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
 
 # H_filename = ['H_G_mat/LDPC_384_320.alist']
 # G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
@@ -37,11 +37,11 @@ G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
 lr_list = ["0.005"]
 max_iter = "5"
 quant_wt = "0"
-nn_eq_list = ["0"]#,"1","2"]	
+nn_eq_list = ["1"]#,"1","2"]	
 for nn_eq in nn_eq_list:
 	if (adapt == "0"):
 		steps_list = ["2000","5000","10000","15000","20000","25000"]
-		steps_list = ["10000","15000","20000"]#["2000","5000","10000","15000","20000","25000"]
+		steps_list = ["20000","15000","10000"]#,"15000","20000"]#["2000","5000","10000","15000","20000","25000"]
 	else:
 		steps_list = ["0","1000","2000","3000","4000","5000"]
 	for i_f in range(1):
@@ -60,10 +60,10 @@ for nn_eq in nn_eq_list:
 							prefix = prefix[0]
 
 							# select the parameters based on testing channel
-							if (channel_type == "ETU_df_0"):
+							if (channel_type == "ETU_df_5"):
 								testing_batch_size = "2400"
-								eb_n0_lo = "15"
-								eb_n0_hi = "30"
+								eb_n0_lo = "11"
+								eb_n0_hi = "24"
 								offline_ts_data = "1"
 							elif (channel_type == "EVA_df_5"):
 								testing_batch_size = "2400"
@@ -107,7 +107,7 @@ for nn_eq in nn_eq_list:
 
 							# load appropriate models for inference
 							models = []
-							weights_path = "saved_models_sf_df"
+							weights_path = "saved_models_sf_df_lte"
 							model_prefix = weights_path + "/intermediate_models/nams_" + prefix + "_st_" + steps + "_lr_" + lr + "_" + channel_type + "_ent_"
 
 							if (adapt == "1"):
@@ -123,7 +123,7 @@ for nn_eq in nn_eq_list:
 							model_suffix = "_nn_eq_" + nn_eq + "_relu_" + relu + "_max_iter_" + max_iter  + "_" + eb_n0_lo_tr + "_" + eb_n0_hi_tr + ".pt"
 							
 
-							for im in range(4):
+							for im in range(6):
 								if (im == 1):
 									filename = model_prefix + str(5) + model_suffix
 								else:
@@ -145,12 +145,12 @@ for nn_eq in nn_eq_list:
 
 							# select the parameters based on testing channel
 							if (channel_type == "ETU_df_0"):
-								testing_batch_size = "2800"
-								eb_n0_lo = "7"
-								eb_n0_hi = "20"
-								# testing_batch_size = "2100"
-								# eb_n0_lo = "11"
-								# eb_n0_hi = "24"
+								# testing_batch_size = "2800"
+								# eb_n0_lo = "7"
+								# eb_n0_hi = "20"
+								testing_batch_size = "1000"
+								eb_n0_lo = "11"
+								eb_n0_hi = "24"
 								offline_ts_data = "1"
 							elif (channel_type == "EVA_df_5"):
 								testing_batch_size = "2400"
@@ -194,7 +194,7 @@ for nn_eq in nn_eq_list:
 
 							# load appropriate models for inference
 							models = []
-							weights_path = "saved_models_sf_df"
+							weights_path = "saved_models_sf_df_lte"
 							model_prefix = weights_path + "/intermediate_models/nams_" + prefix + "_st_" + steps + "_lr_" + lr + "_" + channel_type + "_ent_"
 							
 							if (adapt == "1"):
@@ -215,4 +215,6 @@ for nn_eq in nn_eq_list:
 
 								models.append(filename)
 
+							# eb_n0_lo = "4"
+							# eb_n0_hi = "18"
 							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
