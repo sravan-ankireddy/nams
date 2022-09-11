@@ -208,6 +208,7 @@ if (args.adaptivity_training == 1):
 # Chosse the appropriate data_folders
 models_folder = "saved_models_sf_df_lte"
 results_folder = "ber_data_sf_df_lte"
+# results_folder = "ber_data_debug"
 
 if (args.decoder_type == "neural_ms"):
 	if (args.training == 1):
@@ -257,21 +258,19 @@ class NeuralNetwork(nn.Module):
 				B_cv_init[:,edges_freeze] = 0
 				W_cv_init[:,edges_freeze] = 1
 
-			self.B_cv = torch.nn.Parameter(B_cv_init)
-			self.W_cv = torch.nn.Parameter(W_cv_init)
 			if (args.nn_eq == 1):
-				self.B_cv = torch.nn.Parameter(torch.zeros(num_w1, num_w2))
+				self.B_cv = torch.zeros(num_w1, num_w2).to(device)
 				self.W_cv = torch.nn.Parameter(W_cv_init)
 			elif (args.nn_eq == 2):
 				B_cv_init = torch.fmod(torch.randn([num_w1, num_w2]),2)
 				self.B_cv = torch.nn.Parameter(B_cv_init)
-				self.W_cv = torch.nn.Parameter(torch.ones(num_w1, num_w2))
+				self.W_cv = torch.ones(num_w1, num_w2).to(device)
 			
 		# generate the weight init vectors : VC
 		if(args.cv_model == 0 and args.vc_model == 1):
-			B_vc_init = args.norm_fac * (var_B + torch.fmod(torch.randn([num_w1, num_w2]),var_B))
-			W_vc_init = args.offset + var_W + torch.fmod(torch.randn([num_w1, num_w2]),var_W)
-			W_ch_init = args.offset + var_W + torch.fmod(torch.randn([1, n]),var_W)
+			B_vc_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_B)
+			W_vc_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_W)
+			W_ch_init = torch.fmod(torch.randn([1, n]),2*var_W)
 			if (args.freeze_weights == 1 and (args.entangle_weights == 0 or args.entangle_weights == 3)):
 				B_vc_init[:,edges_freeze] = 0
 				W_vc_init[:,edges_freeze] = 1
@@ -532,7 +531,7 @@ if TRAINING :
 		elif(args.nn_eq == 1):
 			optimizer = optim.Adam([model.W_cv], lr = learning_rate)
 		elif(args.nn_eq == 2):
-			optimizer = optim.Adam([model.B_cv ], lr = learning_rate)
+			optimizer = optim.Adam([model.B_cv], lr = learning_rate)
 	
 	if (args.cv_model == 0 and args.vc_model == 1):
 		if(args.nn_eq == 0):
