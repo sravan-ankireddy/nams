@@ -225,24 +225,25 @@ sleep(2)
 class NeuralNetwork(nn.Module):
 	def __init__(self):
 		super(NeuralNetwork, self).__init__()
+		# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
 		if(args.entangle_weights == 0):
 			num_w1 = num_iterations
 			num_w2 = num_edges				
 		elif(args.entangle_weights == 1):
-			num_w1 = num_iterations
-			num_w2 = 1
-		elif(args.entangle_weights == 2):
-			num_w1 = 1
-			num_w2 = 1
-		elif(args.entangle_weights == 3):
 			num_w1 = 1
 			num_w2 = num_edges
+		elif(args.entangle_weights == 2):
+			num_w1 = 1
+			num_w2 = n
+		elif(args.entangle_weights == 3):
+			num_w1 = 1
+			num_w2 = n - k
+		# for cyclic codes, repeating the wieghts for check nodes
 		elif(args.entangle_weights == 4):
 			num_w1 = 1
-			num_w2 = m # num. check nodes
-		# for cyclic codes, repeating the wieghts for check nodes
+			num_w2 = chk_degrees[0]
 		elif(args.entangle_weights == 5):
-			num_w1 = 1
+			num_w1 = num_iterations
 			num_w2 = chk_degrees[0]
 		else:
 			num_w1 = 1
@@ -254,15 +255,14 @@ class NeuralNetwork(nn.Module):
 		if(args.cv_model == 1 and args.vc_model == 0):
 			B_cv_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_B)
 			W_cv_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_W)
-			if (args.freeze_weights == 1 and (args.entangle_weights == 0 or args.entangle_weights == 3)):
-				B_cv_init[:,edges_freeze] = 0
-				W_cv_init[:,edges_freeze] = 1
 
-			if (args.nn_eq == 1):
+			if (args.nn_eq == 0):
+				self.B_cv = torch.nn.Parameter(B_cv_init)
+				self.W_cv = torch.nn.Parameter(W_cv_init)
+			elif (args.nn_eq == 1):
 				self.B_cv = torch.zeros(num_w1, num_w2).to(device)
 				self.W_cv = torch.nn.Parameter(W_cv_init)
 			elif (args.nn_eq == 2):
-				B_cv_init = torch.fmod(torch.randn([num_w1, num_w2]),2)
 				self.B_cv = torch.nn.Parameter(B_cv_init)
 				self.W_cv = torch.ones(num_w1, num_w2).to(device)
 			
@@ -271,15 +271,15 @@ class NeuralNetwork(nn.Module):
 			B_vc_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_B)
 			W_vc_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_W)
 			W_ch_init = torch.fmod(torch.randn([1, n]),2*var_W)
-			if (args.freeze_weights == 1 and (args.entangle_weights == 0 or args.entangle_weights == 3)):
-				B_vc_init[:,edges_freeze] = 0
-				W_vc_init[:,edges_freeze] = 1
-				W_ch_init[1,:] = 1
 
 			self.B_vc = torch.nn.Parameter(B_vc_init)
 			self.W_vc = torch.nn.Parameter(W_vc_init)
 			self.W_ch = torch.nn.Parameter(W_ch_init)
-			if (args.nn_eq == 1):
+
+			if (args.nn_eq == 0):
+				self.B_vc = torch.nn.Parameter(B_vc_init)
+				self.W_vc = torch.nn.Parameter(W_vc_init)
+			elif (args.nn_eq == 1):
 				self.B_vc = torch.nn.Parameter(torch.zeros(num_w1, num_w2))
 				self.W_vc = torch.nn.Parameter(W_vc_init)
 			elif (args.nn_eq == 2):
@@ -312,37 +312,55 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 	vc = torch.stack(vc)
 	vc = vc[new_order_vc,:]
 
-	if (args.cv_model == 0 and args.vc_model == 1):
-		# create the offset and scaling vectors
-		if (args.entangle_weights == 0 or args.entangle_weights == 1):
+	# apply the weights
+	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
+	if (args.vc_model == 1 and args.vc_model == 0):
+		if (args.entangle_weights == 0 or args.entangle_weights == 5):
 			idx = iteration
 		else:
 			idx = 0
-		# Replicate the weights 
-		if (args.entangle_weights == 4):
+		
+		# Replicate the weights by first replicating for entire matrix and then using edges (indices)
+		if (args.entangle_weights == 2):
+			B_vc_vec = model.B_cv.repeat([1,m])
+			W_vc_vec = model.W_cv.repeat([1,m])
+
+			# get only relevant edges
+			B_vc_vec = B_vc_vec[0,edges]
+			W_vc_vec = W_vc_vec[0,edges]
+
+		# Replicate the weights by repeating for each row
+		elif (args.entangle_weights == 3):
 			B_vc_vec = torch.tensor([]).to(device)
 			W_vc_vec = torch.tensor([]).to(device)
 			for im in range(m):
 				deg = chk_degrees[im]
-				B_vc_vec = torch.cat((B_vc_vec, model.B_vc.repeat([1,deg])),0)
-				W_vc_vec = torch.cat((W_vc_vec, model.W_vc.repeat([1,deg])),0)
-		elif (args.entangle_weights == 5):
-			# B_vc_vec = torch.tensor([]).to(device)
-			# W_vc_vec = torch.tensor([]).to(device)
-			# for im in range(m):
-			# 	deg = chk_degrees[im]
-			# 	B_vc_vec = torch.cat((B_vc_vec, model.B_vc.repeat([1,deg])),0)
-			# 	W_vc_vec = torch.cat((W_vc_vec, model.W_vc.repeat([1,deg])),0)
-			B_vc_vec = model.B_vc.repeat([1,m])
-			W_vc_vec = model.W_vc.repeat([1,m])
+				B_vc_m = model.B_cv[0,im]
+				W_vc_m = model.W_cv[0,im]
+				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
+				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
+
+		# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
+		elif (args.entangle_weights == 4 or args.entangle_weights == 5):
+			B_vc_vec = model.B_cv.repeat([1,m])
+			W_vc_vec = model.W_cv.repeat([1,m])
+
+		# Replicate same weight for all edges	
+		elif (args.entangle_weights == 6):
+			B_vc_vec = model.B_cv.repeat([1,num_edges])
+			W_vc_vec = model.W_cv.repeat([1,num_edges])		
 		else:
-			B_vc_vec = model.B_vc
-			W_vc_vec = model.W_vc
-		# apply the weights
-		offsets = B_vc_vec[idx].to(device)
-		offsets = torch.tile(torch.reshape(offsets,[-1,1]),[1,batch_size])
+			B_vc_vec = model.B_cv
+			W_vc_vec = model.W_cv
+			
+		# Replicate the offsets and scaling matrix across batch size
+		offsets = torch.tile(torch.reshape(B_vc_vec[idx],[-1,1]),[1,batch_size]).to(device)
 		scaling = torch.tile(torch.reshape(W_vc_vec[idx],[-1,1]),[1,batch_size]).to(device)
-		vc = vc.to(device) + scaling*(reordered_soft_input - offsets)
+
+		if (args.relu == 1):
+			vc = scaling * torch.nn.functional.relu(reordered_soft_input - offsets)
+		else:
+			vc = scaling * torch.nn.functional.relu(reordered_soft_input - offsets)
 	else:
 		vc = vc.to(device) + reordered_soft_input
 	return vc
@@ -386,27 +404,48 @@ def compute_cv(vc, iteration, batch_size):
 		mins = torch.reshape(min_list,vc.size())
 
 		# apply the weights
+		# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
 		if (args.cv_model == 1 and args.vc_model == 0):
-			if (args.entangle_weights == 0 or args.entangle_weights == 1):
+			if (args.entangle_weights == 0 or args.entangle_weights == 5):
 				idx = iteration
 			else:
 				idx = 0
-			# Replicate the weights 
-			if (args.entangle_weights == 4):
+			
+			# Replicate the weights by first replicating for entire matrix and then using edges (indices)
+			if (args.entangle_weights == 2):
+				B_cv_vec = model.B_cv.repeat([1,m])
+				W_cv_vec = model.W_cv.repeat([1,m])
+
+				# get only relevant edges
+				B_cv_vec = B_cv_vec[0,edges]
+				W_cv_vec = W_cv_vec[0,edges]
+
+			# Replicate the weights by repeating for each row
+			elif (args.entangle_weights == 3):
 				B_cv_vec = torch.tensor([]).to(device)
 				W_cv_vec = torch.tensor([]).to(device)
 				for im in range(m):
 					deg = chk_degrees[im]
-					B_cv_vec = torch.cat((B_cv_vec, model.B_cv.repeat([1,deg])),0)
-					W_cv_vec = torch.cat((W_cv_vec, model.W_cv.repeat([1,deg])),0)
-			elif (args.entangle_weights == 5):
+					B_cv_m = model.B_cv[0,im]
+					W_cv_m = model.W_cv[0,im]
+					B_cv_vec = torch.cat((B_cv_vec, B_cv_m.repeat([1,deg])),1)
+					W_cv_vec = torch.cat((W_cv_vec, W_cv_m.repeat([1,deg])),1)
+
+			# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
+			elif (args.entangle_weights == 4 or args.entangle_weights == 5):
 				B_cv_vec = model.B_cv.repeat([1,m])
 				W_cv_vec = model.W_cv.repeat([1,m])
+
+			# Replicate same weight for all edges	
+			elif (args.entangle_weights == 6):
+				B_cv_vec = model.B_cv.repeat([1,num_edges])
+				W_cv_vec = model.W_cv.repeat([1,num_edges])		
 			else:
 				B_cv_vec = model.B_cv
 				W_cv_vec = model.W_cv
-			#replicate the offsets and scaling matrix across batch size
-			offsets = torch.tile(torch.reshape(B_cv_vec[idx].to(device),[-1,1]),[1,batch_size]) 
+
+			# Replicate the offsets and scaling matrix across batch size
+			offsets = torch.tile(torch.reshape(B_cv_vec[idx],[-1,1]),[1,batch_size]).to(device)
 			scaling = torch.tile(torch.reshape(W_cv_vec[idx],[-1,1]),[1,batch_size]).to(device)
 			if (args.relu == 1):
 				cv = scaling * prods * torch.nn.functional.relu(mins - offsets)
@@ -415,17 +454,6 @@ def compute_cv(vc, iteration, batch_size):
 		else:
 			cv = prods * mins
 	cv = cv[new_order_cv,:]
-	# del cv_list
-	# del prod_list
-	# del min_list
-	# del B_cv_vec
-	# del W_cv_vec
-	# del offsets
-	# del scaling
-	# del temp
-	# del prod_chk_temp
-	# del sign_chk_temp
-	# gc.collect()
 	return cv
 
 # combine messages to get posterior LLRs

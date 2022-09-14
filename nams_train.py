@@ -6,8 +6,8 @@ import sys
 def save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, lr, eb_n0_train_lo, eb_n0_train_hi, offline_tr_data, max_iter, steps, relu, adapt_tr, freeze_wt, ff, models):
 	
 	gpu_index = ["0", "1", "2", "3"]
-	# entanglement type - 0 - 5xedges, 1 - 5x1, 2 - 1x1, 3 - 1xedges, 4 - 1xm, 5 - 1xedges_per_chk_node
-	ent_index = [0, 2, 3, 5] 
+	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
+	ent_index = [0, 1, 4, 6] 
 
 	os.system("CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[0] +  \
 	 " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
@@ -37,6 +37,31 @@ def save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, 
 	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[3]) +  \
 	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[3]])
 
+	gpu_index = ["0", "1", "2"]
+	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node
+	ent_index = [2, 3, 5] 
+
+	os.system("CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[0] +  \
+	 " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	" + coding_scheme + " -training_batch_size " + training_batch_size 
+	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[0]) +  \
+	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[0]] +\
+
+	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[1] +  \
+	" -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	" + coding_scheme + " -training_batch_size " + training_batch_size 
+	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[1]) +  \
+	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[1]] +\
+
+	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[2] +  \
+	" -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	" + coding_scheme + " -training_batch_size " + training_batch_size 
+	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[2]) +  \
+	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[2]])
+
 adapt_tr = "0"
 freeze_wt = "0"
 interf = "0"
@@ -51,22 +76,20 @@ if (adapt_tr == "1"):
 
 relu = "1"
 coding_scheme_list = ["LDPC"]
-# channel_type_list = ["EVA_df_5"]
 channel_type_list = ["ETU_df_0"]
-
 # channel_type_list = ["AWGN"]
 
 # H_filename = ['H_G_mat/BCH_63_36.alist']
 # G_filename = ['H_G_mat/G_BCH_63_36.gmat']
 
-H_filename = ['H_G_mat/LDPC_128_64.alist']
-G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
+# H_filename = ['H_G_mat/LDPC_128_64.alist']
+# G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
 
 # H_filename = ['H_G_mat/LDPC_384_192.alist']
 # G_filename = ['H_G_mat/G_LDPC_384_192.gmat']
 
-# H_filename = ['H_G_mat/LDPC_384_320.alist']
-# G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
+H_filename = ['H_G_mat/LDPC_384_320.alist']
+G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
 
 # force_idx = 0
 
@@ -88,7 +111,7 @@ for mi in max_iter:
 							prefix = temp.split(".")
 							prefix = prefix[0]
 
-							if (channel_type == "ETU_df_5"):
+							if (channel_type == "ETU_df_0"):
 								training_batch_size = "140"
 								eb_n0_train_lo_tr = "11"
 								eb_n0_train_hi_tr = "24"
@@ -146,7 +169,7 @@ for mi in max_iter:
 							else:
 								model_suffix = "_nn_eq_" + nn_eq + "_relu_" + relu + "_max_iter_" + mi + "_" + eb_n0_train_lo_tr + "_" + eb_n0_train_hi_tr + ".pt"
 							
-							for im in range(6):
+							for im in range(7):
 								filename = model_prefix + str(im) + model_suffix
 								saved_models_new.append(filename)
 							save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, lr, eb_n0_train_lo_tr, eb_n0_train_hi_tr, offline_tr_data, mi, steps_tr, relu, adapt_tr, freeze_wt, ff, saved_models_new)
@@ -167,9 +190,9 @@ for mi in max_iter:
 								# training_batch_size = "160"
 								# eb_n0_train_lo_tr = "12"
 								# eb_n0_train_hi_tr = "27"
-								training_batch_size = "100"
-								eb_n0_train_lo_tr = "1"
-								eb_n0_train_hi_tr = "10"
+								training_batch_size = "180"
+								eb_n0_train_lo_tr = "5"
+								eb_n0_train_hi_tr = "22"
 								# eb_n0_train_lo_tr = "7"
 								# eb_n0_train_hi_tr = "20"
 								offline_tr_data = "1"
@@ -184,7 +207,7 @@ for mi in max_iter:
 								eb_n0_train_hi_tr = "10"
 								offline_tr_data = "1"
 							elif (channel_type == "AWGN"):
-								training_batch_size = "60"
+								training_batch_size = "110"
 								eb_n0_train_lo_tr = "1"
 								eb_n0_train_hi_tr = "6"
 								offline_tr_data = "0"
@@ -226,7 +249,7 @@ for mi in max_iter:
 							else:
 								model_suffix = "_nn_eq_" + nn_eq + "_relu_" + relu + "_max_iter_" + mi + "_" + eb_n0_train_lo_tr + "_" + eb_n0_train_hi_tr + ".pt"
 							
-							for im in range(6):
+							for im in range(7):
 								filename = model_prefix + str(im) + model_suffix
 								saved_models_new.append(filename)
 							save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, lr, eb_n0_train_lo_tr, eb_n0_train_hi_tr, offline_tr_data, mi, steps_tr, relu, adapt_tr, freeze_wt, ff, saved_models_new)
