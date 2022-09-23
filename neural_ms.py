@@ -208,6 +208,11 @@ if (args.adaptivity_training == 1):
 # Chosse the appropriate data_folders
 models_folder = "saved_models_sf_df_lte"
 results_folder = "ber_data_sf_df_lte"
+
+if (args.cv_model == 0 and args.vc_model == 1):
+	models_folder = "saved_models_sf_df_lte_vc"
+	results_folder = "ber_data_sf_df_lte_vc"
+
 # results_folder = "ber_data_debug"
 
 if (args.decoder_type == "neural_ms"):
@@ -274,7 +279,8 @@ class NeuralNetwork(nn.Module):
 
 			self.B_vc = torch.nn.Parameter(B_vc_init)
 			self.W_vc = torch.nn.Parameter(W_vc_init)
-			self.W_ch = torch.nn.Parameter(W_ch_init)
+			# self.W_ch = torch.nn.Parameter(W_ch_init)
+			self.W_ch = torch.ones(1, n).to(device)
 
 			if (args.nn_eq == 0):
 				self.B_vc = torch.nn.Parameter(B_vc_init)
@@ -314,16 +320,16 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 
 	# apply the weights
 	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
-	if (args.vc_model == 1 and args.vc_model == 0):
+	if (args.cv_model == 0 and args.vc_model == 1):
 		if (args.entangle_weights == 0 or args.entangle_weights == 5):
 			idx = iteration
 		else:
 			idx = 0
-		
+
 		# Replicate the weights by first replicating for entire matrix and then using edges (indices)
 		if (args.entangle_weights == 2):
-			B_vc_vec = model.B_cv.repeat([1,m])
-			W_vc_vec = model.W_cv.repeat([1,m])
+			B_vc_vec = model.B_vc.repeat([1,m])
+			W_vc_vec = model.W_vc.repeat([1,m])
 
 			# get only relevant edges
 			B_vc_vec = B_vc_vec[0,edges]
@@ -335,32 +341,32 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 			W_vc_vec = torch.tensor([]).to(device)
 			for im in range(m):
 				deg = chk_degrees[im]
-				B_vc_m = model.B_cv[0,im]
-				W_vc_m = model.W_cv[0,im]
+				B_vc_m = model.B_vc[0,im]
+				W_vc_m = model.W_vc[0,im]
 				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
 				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
 
 		# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
 		elif (args.entangle_weights == 4 or args.entangle_weights == 5):
-			B_vc_vec = model.B_cv.repeat([1,m])
-			W_vc_vec = model.W_cv.repeat([1,m])
+			B_vc_vec = model.B_vc.repeat([1,m])
+			W_vc_vec = model.W_vc.repeat([1,m])
 
 		# Replicate same weight for all edges	
 		elif (args.entangle_weights == 6):
-			B_vc_vec = model.B_cv.repeat([1,num_edges])
-			W_vc_vec = model.W_cv.repeat([1,num_edges])		
+			B_vc_vec = model.B_vc.repeat([1,num_edges])
+			W_vc_vec = model.W_vc.repeat([1,num_edges])		
 		else:
-			B_vc_vec = model.B_cv
-			W_vc_vec = model.W_cv
+			B_vc_vec = model.B_vc
+			W_vc_vec = model.W_vc
 			
 		# Replicate the offsets and scaling matrix across batch size
 		offsets = torch.tile(torch.reshape(B_vc_vec[idx],[-1,1]),[1,batch_size]).to(device)
 		scaling = torch.tile(torch.reshape(W_vc_vec[idx],[-1,1]),[1,batch_size]).to(device)
 
-		if (args.relu == 1):
-			vc = scaling * torch.nn.functional.relu(reordered_soft_input - offsets)
+		if 0:
+			vc = scaling * torch.nn.functional.relu(vc.to(device) - offsets) + reordered_soft_input
 		else:
-			vc = scaling * torch.nn.functional.relu(reordered_soft_input - offsets)
+			vc = scaling * (vc.to(device) - offsets) + reordered_soft_input
 	else:
 		vc = vc.to(device) + reordered_soft_input
 	return vc
@@ -466,7 +472,7 @@ def marginalize(soft_input, cv, batch_size):
 		temp = torch.sum(temp,0).to(device) 
 		soft_output = torch.cat((soft_output,temp),0)
 	soft_output = torch.reshape(soft_output,soft_input.size())
-	if (args.cv_model == 0 and args.vc_model == 1):
+	if 0:
 		soft_output = torch.tile(torch.reshape(model.W_ch,[-1,1]),[1,batch_size])*weighted_soft_input + soft_output
 	else:
 		soft_output = weighted_soft_input + soft_output
@@ -563,19 +569,19 @@ if TRAINING :
 	
 	if (args.cv_model == 0 and args.vc_model == 1):
 		if(args.nn_eq == 0):
-			optimizer = optim.Adam([model.B_vc, model.W_vc, model.W_ch], lr = learning_rate)
+			optimizer = optim.Adam([model.B_vc, model.W_vc], lr = learning_rate)
 		elif(args.nn_eq == 1):
-			optimizer = optim.Adam([model.W_vc, model.W_ch], lr = learning_rate)
+			optimizer = optim.Adam([model.W_vc], lr = learning_rate)
 		elif(args.nn_eq == 2):
-			optimizer = optim.Adam([model.B_vc, model.W_ch], lr = learning_rate)
+			optimizer = optim.Adam([model.B_vc], lr = learning_rate)
 	
 	if (args.cv_model == 1 and args.vc_model == 1):
 		if(args.nn_eq == 0):
-			optimizer = optim.Adam([model.B_cv, model.W_cv, model.B_vc, model.W_vc, model.W_ch], lr = learning_rate)
+			optimizer = optim.Adam([model.B_cv, model.W_cv, model.B_vc, model.W_vc], lr = learning_rate)
 		elif(args.nn_eq == 1):
-			optimizer = optim.Adam([model.W_cv, model.W_vc, model.W_ch], lr = learning_rate)
+			optimizer = optim.Adam([model.W_cv, model.W_vc], lr = learning_rate)
 		elif(args.nn_eq == 2):
-			optimizer = optim.Adam([[model.B_cv, model.B_vc, model.W_ch]], lr = learning_rate)
+			optimizer = optim.Adam([[model.B_cv, model.B_vc]], lr = learning_rate)
 
 	scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0, last_epoch=-1, verbose=False)
 
@@ -606,19 +612,19 @@ if TRAINING :
 		
 		if (args.cv_model == 0 and args.vc_model == 1):
 			if(args.nn_eq == 0):
-				optimizer = optim.Adam([model.B_vc, model.W_vc, model.W_ch], lr = learning_rate)
+				optimizer = optim.Adam([model.B_vc, model.W_vc], lr = learning_rate)
 			elif(args.nn_eq == 1):
-				optimizer = optim.Adam([model.W_vc, model.W_ch], lr = learning_rate)
+				optimizer = optim.Adam([model.W_vc], lr = learning_rate)
 			elif(args.nn_eq == 2):
-				optimizer = optim.Adam([model.B_vc, model.W_ch], lr = learning_rate)
+				optimizer = optim.Adam([model.B_vc], lr = learning_rate)
 		
 		if (args.cv_model == 1 and args.vc_model == 1):
 			if(args.nn_eq == 0):
-				optimizer = optim.Adam([model.B_cv, model.W_cv, model.B_vc, model.W_vc, model.W_ch], lr = learning_rate)
+				optimizer = optim.Adam([model.B_cv, model.W_cv, model.B_vc, model.W_vc], lr = learning_rate)
 			elif(args.nn_eq == 1):
-				optimizer = optim.Adam([model.W_cv, model.W_vc, model.W_ch], lr = learning_rate)
+				optimizer = optim.Adam([model.W_cv, model.W_vc], lr = learning_rate)
 			elif(args.nn_eq == 2):
-				optimizer = optim.Adam([[model.B_cv, model.B_vc, model.W_ch]], lr = learning_rate)
+				optimizer = optim.Adam([[model.B_cv, model.B_vc]], lr = learning_rate)
 		scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0, last_epoch=-1, verbose=False)
 
 	step = 0

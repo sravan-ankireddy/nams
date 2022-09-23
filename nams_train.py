@@ -7,7 +7,7 @@ def save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, 
 	
 	gpu_index = ["0", "1", "2", "3"]
 	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
-	ent_index = [0, 1, 4, 6] 
+	ent_index = [0, 1, 4, 6]
 
 	os.system("CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[0] +  \
 	 " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
@@ -75,12 +75,16 @@ if (adapt_tr == "1"):
 	steps = "20000"
 
 relu = "1"
-coding_scheme_list = ["LDPC"]
+coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
 # channel_type_list = ["AWGN"]
 
-# H_filename = ['H_G_mat/BCH_63_36.alist']
-# G_filename = ['H_G_mat/G_BCH_63_36.gmat']
+H_filename = ['H_G_mat/BCH_63_36.alist']
+G_filename = ['H_G_mat/G_BCH_63_36.gmat']
+
+# H_filename = ['H_G_mat/BCH_63_30.alist']
+# G_filename = ['H_G_mat/G_BCH_63_30.gmat']
+
 
 # H_filename = ['H_G_mat/LDPC_128_64.alist']
 # G_filename = ['H_G_mat/G_LDPC_128_64.gmat']
@@ -88,8 +92,8 @@ channel_type_list = ["ETU_df_0"]
 # H_filename = ['H_G_mat/LDPC_384_192.alist']
 # G_filename = ['H_G_mat/G_LDPC_384_192.gmat']
 
-H_filename = ['H_G_mat/LDPC_384_320.alist']
-G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
+# H_filename = ['H_G_mat/LDPC_384_320.alist']
+# G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
 
 # force_idx = 0
 
@@ -190,7 +194,7 @@ for mi in max_iter:
 								# training_batch_size = "160"
 								# eb_n0_train_lo_tr = "12"
 								# eb_n0_train_hi_tr = "27"
-								training_batch_size = "180"
+								training_batch_size = "90"
 								eb_n0_train_lo_tr = "5"
 								eb_n0_train_hi_tr = "22"
 								# eb_n0_train_lo_tr = "7"

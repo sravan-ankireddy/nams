@@ -1,17 +1,37 @@
 clear all;
 
-bch = 0;
+bch = 1;
 
 % num frames
 % N = 1200;
-N = 2400;
+N = 24*15*3;
 
 chan = "ETU"; %EPA/EVA/ETU
 doppler_freq = 0;
 
 if (bch == 1)
+    % n = 63;
+    % k = 36;
+    % filename = "H_mat/BCH_" + n + "_" + k + ".alist";
+
+    % if (chan == "ETU")
+    %     SNRs = 11:24;
+    % elseif (chan == "EVA")
+    %     SNRs = 10:25;
+    % end
+
+    % n = 63;
+    % k = 57;
+    % filename = "H_mat/BCH_" + n + "_" + k + ".alist";
+
+    % if (chan == "ETU")
+    %     SNRs = 11:24;
+    % elseif (chan == "EVA")
+    %     SNRs = 10:25;
+    % end
+
     n = 63;
-    k = 36;
+    k = 30;
     filename = "H_mat/BCH_" + n + "_" + k + ".alist";
 
     if (chan == "ETU")
@@ -20,25 +40,25 @@ if (bch == 1)
         SNRs = 10:25;
     end
 else
-    n = 128;
-    k = 64;
-
-    filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
-    if (chan == "ETU")
-    SNRs = 1:10;
-    elseif (chan == "EVA")
-        SNRs = 10:25;
-    end
-
-    % n = 384;
-    % k = 320;
+    % n = 128;
+    % k = 64;
 
     % filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
     % if (chan == "ETU")
-    %     SNRs = 4:18;
+    % SNRs = 1:12;
     % elseif (chan == "EVA")
     %     SNRs = 10:25;
     % end
+
+    n = 384;
+    k = 320;
+
+    filename = "H_mat/LDPC_" + n + "_" + k + ".alist";
+    if (chan == "ETU")
+        SNRs = 5:24;
+    elseif (chan == "EVA")
+        SNRs = 10:25;
+    end
 
     % n = 384;
     % k = 288;
@@ -88,10 +108,22 @@ modulation = 'BPSK';
 mod_method = "comm"; % comm or lte
 
 % FIX ME
-% msg = zeros(k,N*376,length(SNRs));
-% enc = zeros(n,N*376,length(SNRs));
-msg = zeros(k,N*178,length(SNRs));
-enc = zeros(n,N*178,length(SNRs));
+msg = zeros(k,N*376,length(SNRs));
+enc = zeros(n,N*376,length(SNRs));
+% msg = zeros(k,N*178,length(SNRs));
+% enc = zeros(n,N*178,length(SNRs));
+
+% msg = zeros(k,N*58,length(SNRs));
+% enc = zeros(n,N*58,length(SNRs));
+
+% msg = zeros(k,426448,length(SNRs));
+% enc = zeros(n,426448,length(SNRs));
+
+
+
+% n_frames = 420000;
+% msg = zeros(k,n_frames,length(SNRs));
+% enc = zeros(n,n_frames,length(SNRs));
 
 rx = zeros(size(enc));
 
@@ -183,11 +215,19 @@ BER_oms = zeros(size(SNRs));
 BER_bp = zeros(size(SNRs));
 BER_lbp = zeros(size(SNRs));
 
-for i_SNR = 1:length(SNRs)
+msg_ref = msg_ref(:,1:10000,:);
+enc_ref = enc_ref(:,1:10000,:);
+llr_ref = llr_ref(:,1:10000,:);
+
+parfor i_SNR = 1:length(SNRs)
     
     msg = squeeze(msg_ref(:,:,i_SNR));
     enc = squeeze(enc_ref(:,:,i_SNR));
     llr = -1*squeeze(llr_ref(:,:,i_SNR));
+
+    % msg = squeeze(msg_ref(:,:,i_SNR));
+    % enc = squeeze(enc_ref(:,:,i_SNR));
+    % llr = -1*squeeze(llr_ref(:,:,i_SNR));
 
     disp("Decoding (" + code.n + ","+ code.k + ") " + chan  + " Doppler " + doppler_freq + " data : SNR " + SNRs(i_SNR));
 
@@ -317,6 +357,10 @@ for i_N = 1:N
 end
 msg_data = msg_vec;
 enc_data = enc_vec;
+% n_frames = 420000;
+% msg_data = msg_vec(:,1:n_frames);
+% enc_data = enc_vec(:,1:n_frames);
+% rx_data = rx_data(:,1:n_frames);
 end
 
 function rx = lte_chan(inputBits, num_sf, modulation, mod_method, SNRdB, nFrame, cfg, enb, cec)
