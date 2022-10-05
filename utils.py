@@ -189,14 +189,30 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		received_codewords = codewords + noise
 		soft_input = 2.0*received_codewords/(sigma*sigma)
 	elif (channel == 'bursty'):
-		# add bursty noise
-		p = 0.01
+		# # add bursty noise
+		# p = 0.01
+		# sigma_bursty = 3*sigma
+		# temp = np.random.binomial(1,p,np.shape(noise))
+		# # breakpoint()
+		# noise_bursty = np.multiply(temp,sigma_bursty*np.random.randn(codewords.shape[0],codewords.shape[1]))
+		# received_codewords = codewords + noise + noise_bursty
+		# soft_input = 2.0*received_codewords/(sigma*sigma)
+
+		# TurboAE method
 		sigma_bursty = 3*sigma
-		temp = np.random.binomial(1,p,np.shape(noise))
-		# breakpoint()
-		noise_bursty = np.multiply(temp,sigma_bursty*np.random.randn(codewords.shape[0],codewords.shape[1]))
-		received_codewords = codewords + noise + noise_bursty
+		# Keep bursty noise at 10%
+		S = round(codewords.shape[0]/10)
+
+		# generate bursty noise
+		noise_bursty = sigma_bursty * np.random.randn(S,codewords.shape[1])
+
+		received_codewords = codewords + noise
+		for jj in range(codewords.shape[1]):
+			ind = np.random.randint(0,codewords.shape[0]-S+1)
+			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
+
 		soft_input = 2.0*received_codewords/(sigma*sigma)
+
 	elif (channel == 'rayleigh_fast'): ##rayleigh fast
 		data_ones = np.ones_like(codewords)
 		d0 = data_ones.shape[0]

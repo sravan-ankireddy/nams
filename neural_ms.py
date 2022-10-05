@@ -207,7 +207,9 @@ if (args.adaptivity_training == 1):
 
 # Chosse the appropriate data_folders
 models_folder = "saved_models_sf_df_lte"
-results_folder = "ber_data_sf_df_lte"
+# results_folder = "ber_data_sf_df_lte"
+results_folder = "ber_data_icc"
+# results_folder = "ber_data_icc_from_AWGN"
 
 if (args.cv_model == 0 and args.vc_model == 1):
 	models_folder = "saved_models_sf_df_lte_vc"
@@ -224,7 +226,7 @@ if (args.decoder_type == "neural_ms"):
 
 	if (args.testing == 1):
 		print("Using saved models from : ", args.saved_model_path)
-
+		print("Going to save results at : ", results_folder)
 sleep(2)
 
 class NeuralNetwork(nn.Module):
@@ -326,14 +328,16 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 		else:
 			idx = 0
 
-		# Replicate the weights by first replicating for entire matrix and then using edges (indices)
+		# Replicate the weights by repeating for each column
 		if (args.entangle_weights == 2):
-			B_vc_vec = model.B_vc.repeat([1,m])
-			W_vc_vec = model.W_vc.repeat([1,m])
-
-			# get only relevant edges
-			B_vc_vec = B_vc_vec[0,edges]
-			W_vc_vec = W_vc_vec[0,edges]
+			B_vc_vec = torch.tensor([]).to(device)
+			W_vc_vec = torch.tensor([]).to(device)
+			for im in range(n):
+				deg = var_degrees[im]
+				B_vc_m = model.B_vc[0,im]
+				W_vc_m = model.W_vc[0,im]
+				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
+				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
 
 		# Replicate the weights by repeating for each row
 		elif (args.entangle_weights == 3):
@@ -417,14 +421,16 @@ def compute_cv(vc, iteration, batch_size):
 			else:
 				idx = 0
 			
-			# Replicate the weights by first replicating for entire matrix and then using edges (indices)
+			# Replicate the weights by repeating for each column
 			if (args.entangle_weights == 2):
-				B_cv_vec = model.B_cv.repeat([1,m])
-				W_cv_vec = model.W_cv.repeat([1,m])
-
-				# get only relevant edges
-				B_cv_vec = B_cv_vec[0,edges]
-				W_cv_vec = W_cv_vec[0,edges]
+				B_cv_vec = torch.tensor([]).to(device)
+				W_cv_vec = torch.tensor([]).to(device)
+				for im in range(n):
+					deg = var_degrees[im]
+					B_cv_m = model.B_cv[0,im]
+					W_cv_m = model.W_cv[0,im]
+					B_cv_vec = torch.cat((B_cv_vec, B_cv_m.repeat([1,deg])),1)
+					W_cv_vec = torch.cat((W_cv_vec, W_cv_m.repeat([1,deg])),1)
 
 			# Replicate the weights by repeating for each row
 			elif (args.entangle_weights == 3):
@@ -834,7 +840,7 @@ SNRs = eb_n0_to_snr(eb_n0_dB,rate,mod_bits)
 if TESTING :
 	# Testing phase
 	print("***********************")
-	print("Testing decoder on a max. of " + str(int(max_frames)) + "  frames from SNR : " + str(int(args.eb_n0_lo)) + " to " +str(int(args.eb_n0_hi)))
+	print("Testing decoder on a max. of " + str(int(max_frames)) + "  frames from SNR : " + str(int(args.eb_n0_lo)) + " to " + str(int(args.eb_n0_hi)) + " for " + str(args.channel_type) + " channel")
 	print("***********************")
 
 	if (args.use_saved_model == 1):
