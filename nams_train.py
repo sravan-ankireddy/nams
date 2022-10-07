@@ -72,7 +72,7 @@ nn_eq_list = ["0"]#,"1","2"]
 ff = "0"
 lr_list = ["0.005"]#,"0.01"]
 
-steps = "20000"
+steps = "10000"
 if (adapt_tr == "1"):
 	steps = "20000"
 
@@ -81,7 +81,7 @@ coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
 # channel_type_list = ["AWGN"]
 # channel_type_list = ["OTA"]
-channel_type_list = ["bursty"]
+channel_type_list = ["bursty_p1"]
 
 
 H_filename = ['H_G_mat/BCH_63_36.alist']
@@ -101,6 +101,8 @@ G_filename = ['H_G_mat/G_BCH_63_36.gmat']
 # G_filename = ['H_G_mat/G_LDPC_384_320.gmat']
 
 # force_idx = 0
+
+# time.sleep(1200)
 
 max_iter = ["5"]
 for mi in max_iter:
@@ -140,7 +142,12 @@ for mi in max_iter:
 								eb_n0_train_lo_tr = "1"
 								eb_n0_train_hi_tr = "8"
 								offline_tr_data = "0"
-							elif (channel_type == "bursty"):
+							elif (channel_type == "bursty_p1" or channel_type == "bursty_p2" or channel_type == "bursty_p3" or channel_type == "bursty_p4"):
+								training_batch_size = "360"
+								eb_n0_train_lo_tr = "1"
+								eb_n0_train_hi_tr = "18"
+								offline_tr_data = "0"
+							elif (channel_type == "interf_2" or channel_type == "interf_4" or channel_type == "interf_6" or channel_type == "interf_8"):
 								training_batch_size = "320"
 								eb_n0_train_lo_tr = "1"
 								eb_n0_train_hi_tr = "16"

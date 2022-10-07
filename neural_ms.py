@@ -826,6 +826,13 @@ if TRAINING :
 				W_ch_temp = model.W_ch.cpu().data.numpy()
 				weights_temp = {'B_cv':B_cv_temp, 'W_cv':W_cv_temp, 'B_vc':B_vc_temp, 'W_vc':W_vc_temp, 'W_ch':W_ch_temp}
 			if (args.adaptivity_training == 1):
+				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+			else:
+				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+			if (args.freeze_weights == 1):
+				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
+			sio.savemat(filename_mat,weights_temp)
+			if (args.adaptivity_training == 1):
 				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
 				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"

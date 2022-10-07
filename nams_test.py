@@ -6,10 +6,10 @@ def run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding,chan,eb_n0_lo,eb_n0
 
 	gpu_id = ["0", "1", "2", "3"]
 
-	# testing_batch_size_bp = "10000"
-	# max_iter = "5"
-	# os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -1 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[0] + " -decoder_type spa -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -2 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[1] + " -decoder_type min_sum -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h+" -G_filename "+ g )
+	testing_batch_size_bp = "10000"
+	max_iter = "5"
+	os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -1 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[0] + " -decoder_type spa -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -2 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[1] + " -decoder_type min_sum -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h+" -G_filename "+ g )
 
 	# time.sleep(60)
 
@@ -37,7 +37,7 @@ alpha = "0"
 relu = "1"
 coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
-channel_type_list = ["bursty"]
+channel_type_list = ["bursty_p1"]#["interf_4","interf_2"]
 
 H_filename = ['H_G_mat/BCH_63_36.alist']
 G_filename = ['H_G_mat/G_BCH_63_36.gmat']
@@ -57,7 +57,7 @@ nn_eq_list = ["0"]#,"1","2"]#,"1","2"]
 for nn_eq in nn_eq_list:
 	if (adapt == "0"):
 		steps_list = ["20000","15000","10000","5000","2000"]
-		steps_list = ["3500"]#["20000","15000","10000","5000","2000"]
+		steps_list = ["10000"]#["20000","15000","10000","5000","2000"]
 	else:
 		steps_list = ["0","1000","2000","3000","4000","5000"]
 	for i_f in range(1):
@@ -96,8 +96,13 @@ for nn_eq in nn_eq_list:
 								eb_n0_lo = "1"
 								eb_n0_hi = "8"
 								offline_ts_data = "0"
-							elif (channel_type == "bursty"):
-								testing_batch_size = "2000"
+							elif (channel_type == "bursty_p1" or channel_type == "bursty_p2" or channel_type == "bursty_p3" or channel_type == "bursty_p4"):
+								testing_batch_size = "4000"
+								eb_n0_lo = "1"
+								eb_n0_hi = "18"
+								offline_ts_data = "0"
+							elif (channel_type == "interf_2" or channel_type == "interf_4" or "interf_6" or channel_type == "interf_8"):
+								testing_batch_size = "4000"
 								eb_n0_lo = "1"
 								eb_n0_hi = "16"
 								offline_ts_data = "0"
@@ -122,6 +127,9 @@ for nn_eq in nn_eq_list:
 								elif (chan_tr == "AWGN"):
 									eb_n0_lo_tr = "1"
 									eb_n0_hi_tr = "8"
+								elif (chan_tr == "bursty"):
+									eb_n0_lo_tr = "1"
+									eb_n0_hi_tr = "16"
 								elif(chan_tr == "OTA"):
 									eb_n0_lo_tr = "1"
 									eb_n0_hi_tr = "4"
@@ -148,8 +156,8 @@ for nn_eq in nn_eq_list:
 								filename = model_prefix + str(im) + model_suffix
 
 								models.append(filename)
-							# eb_n0_lo = "5"
-							# eb_n0_hi = "22"
+							# eb_n0_lo = "12"
+							# eb_n0_hi = "16"
 							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
 
 						elif (coding_scheme == "LDPC"):
