@@ -207,54 +207,18 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		soft_input = 2.0*received_codewords/(sigma*sigma)
 
 	elif (channel == 'bursty_p1' or channel == 'bursty_p2' or channel == 'bursty_p3' or channel == 'bursty_p4'):
-		sigma_bursty = 1*sigma
-		# Keep bursty noise at 10%
-		S = round(codewords.shape[0]*0.1)
+		
+		bursty_pow = 0
+		if (channel == 'bursty_p1'):
+			bursty_pow = 1
+		elif (channel == 'bursty_p2'):
+			bursty_pow = 2
+		elif (channel == 'bursty_p3'):
+			bursty_pow = 3
+		elif (channel == 'bursty_p4'):
+			bursty_pow = 4
 
-		# generate bursty noise
-		noise_bursty = sigma_bursty * np.random.randn(S,codewords.shape[1])
-
-		received_codewords = codewords + noise
-		for jj in range(codewords.shape[1]):
-			ind = np.random.randint(0,codewords.shape[0]-S+1)
-			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
-
-		soft_input = 2.0*received_codewords/(sigma*sigma)
-
-	elif (channel == 'bursty_p2'):
-		sigma_bursty = 2*sigma
-		# Keep bursty noise at 10%
-		S = round(codewords.shape[0]*0.1)
-
-		# generate bursty noise
-		noise_bursty = sigma_bursty * np.random.randn(S,codewords.shape[1])
-
-		received_codewords = codewords + noise
-		for jj in range(codewords.shape[1]):
-			ind = np.random.randint(0,codewords.shape[0]-S+1)
-			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
-
-		soft_input = 2.0*received_codewords/(sigma*sigma)
-
-	elif (channel == 'bursty_p3'):
-
-		sigma_bursty = 3*sigma
-		# Keep bursty noise at 10%
-		S = round(codewords.shape[0]*0.1)
-
-		# generate bursty noise
-		noise_bursty = sigma_bursty * np.random.randn(S,codewords.shape[1])
-
-		received_codewords = codewords + noise
-		for jj in range(codewords.shape[1]):
-			ind = np.random.randint(0,codewords.shape[0]-S+1)
-			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
-
-		soft_input = 2.0*received_codewords/(sigma*sigma)
-	
-	elif (channel == 'bursty_p4'):
-
-		sigma_bursty = 4*sigma
+		sigma_bursty = bursty_pow*sigma
 		# Keep bursty noise at 10%
 		S = round(codewords.shape[0]*0.1)
 
