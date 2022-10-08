@@ -206,7 +206,7 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		received_codewords = received_codewords + interf_coef*interf_codewords
 		soft_input = 2.0*received_codewords/(sigma*sigma)
 
-	elif (channel == 'bursty_p1' or channel == 'bursty_p2' or channel == 'bursty_p3' or channel == 'bursty_p4'):
+	elif (channel == 'bursty_p1' or channel == 'bursty_p2' or channel == 'bursty_p3' or channel == 'bursty_p4' or channel == 'bursty_p5'):
 		
 		bursty_pow = 0
 		if (channel == 'bursty_p1'):
@@ -214,11 +214,13 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		elif (channel == 'bursty_p2'):
 			bursty_pow = 2
 		elif (channel == 'bursty_p3'):
-			bursty_pow = 3
-		elif (channel == 'bursty_p4'):
 			bursty_pow = 4
+		elif (channel == 'bursty_p4'):
+			bursty_pow = 8
+		elif (channel == 'bursty_p5'):
+			bursty_pow = 16
 
-		sigma_bursty = bursty_pow*sigma
+		sigma_bursty = np.sqrt(bursty_pow)*sigma
 		# Keep bursty noise at 10%
 		S = round(codewords.shape[0]*0.1)
 
