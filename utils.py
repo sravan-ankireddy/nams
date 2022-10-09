@@ -1,7 +1,6 @@
 import numpy as np
 np.random.seed(1)
 from scipy.io import loadmat
-import tensorflow as tf
 import torch.nn.functional as F
 import torch
 torch.manual_seed(1)
@@ -189,15 +188,52 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 	if (channel == 'AWGN'):
 		received_codewords = codewords + noise
 		soft_input = 2.0*received_codewords/(sigma*sigma)
-	elif (channel == 'bursty'):
-		# add bursty noise
-		p = 0.01
-		sigma_bursty = 3*sigma
-		temp = np.random.binomial(1,p,np.shape(noise))
-		# breakpoint()
-		noise_bursty = np.multiply(temp,sigma_bursty*np.random.randn(codewords.shape[0],codewords.shape[1]))
-		received_codewords = codewords + noise + noise_bursty
+
+	elif (channel == 'interf_2' or channel == 'interf_4' or channel == 'interf_6' or channel == 'interf_8'):
+		received_codewords = codewords + noise
+		# generate interference
+		interf_coef = 0
+		if (channel == 'interf_2'):
+			interf_coef = 0.2
+		elif (channel == 'interf_4'):
+			interf_coef = 0.4
+		elif (channel == 'interf_6'):
+			interf_coef = 0.6
+		elif (channel == 'interf_8'):
+			interf_coef = 0.8
+
+		interf_codewords = 2*torch.randint(0,2,(codewords.shape[0],codewords.shape[1])) - 1
+		received_codewords = received_codewords + interf_coef*interf_codewords
 		soft_input = 2.0*received_codewords/(sigma*sigma)
+
+	elif (channel == 'bursty_p1' or channel == 'bursty_p2' or channel == 'bursty_p3' or channel == 'bursty_p4' or channel == 'bursty_p5'):
+		
+		bursty_pow = 0
+		if (channel == 'bursty_p1'):
+			bursty_pow = 1
+		elif (channel == 'bursty_p2'):
+			bursty_pow = 2
+		elif (channel == 'bursty_p3'):
+			bursty_pow = 4
+		elif (channel == 'bursty_p4'):
+			bursty_pow = 8
+		elif (channel == 'bursty_p5'):
+			bursty_pow = 16
+
+		sigma_bursty = np.sqrt(bursty_pow)*sigma
+		# Keep bursty noise at 10%
+		S = round(codewords.shape[0]*0.1)
+
+		# generate bursty noise
+		noise_bursty = sigma_bursty * np.random.randn(S,codewords.shape[1])
+
+		received_codewords = codewords + noise
+		for jj in range(codewords.shape[1]):
+			ind = np.random.randint(0,codewords.shape[0]-S+1)
+			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
+
+		soft_input = 2.0*received_codewords/(sigma*sigma)
+
 	elif (channel == 'rayleigh_fast'): ##rayleigh fast
 		data_ones = np.ones_like(codewords)
 		d0 = data_ones.shape[0]
@@ -243,9 +279,7 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 		data_ones = np.ones_like(codewords)
 		d0 = data_ones.shape[0]
 		d1 = data_ones.shape[1]
-		# fading_h = tf.sqrt(tf.random.randn(data_shape[0])**2 +  tf.random.randn(data_shape[0])**2)/tf.sqrt(3.14/2.0)
 		fading_h = np.sqrt(np.random.randn(d0)**2 +  np.random.randn(d0)**2)/np.sqrt(3.14/2.0)
-		# fading_h = fading_h.type(tf.FloatTensor).to(self.this_device)
 		fading_h = torch.tensor(fading_h)
 		received_codewords = codewords*fading_h[:,None, None] + noise
 		soft_input = 2.0*received_codewords/(sigma*sigma)
