@@ -8,35 +8,35 @@ def save_weights(h, g, coding_scheme, channel_type, nn_eq, training_batch_size, 
 	
 	gpu_index = ["0", "1", "2", "3"]
 	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
-	ent_index = [0, 1, 4, 6]
+	ent_index = [6, 1, 4, 6]
 
-	os.system("CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[0] +  \
+	os.system("CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms_Wgw.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[0] +  \
 	 " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
 	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
 	" + coding_scheme + " -training_batch_size " + training_batch_size 
 	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[0]) +  \
-	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[0]] +\
+	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[0]])# +\
 
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[1] +  \
-	" -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
-	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
-	" + coding_scheme + " -training_batch_size " + training_batch_size 
-	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[1]) +  \
-	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[1]] +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[1] +  \
+	# " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	# -force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	# " + coding_scheme + " -training_batch_size " + training_batch_size 
+	# + " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[1]) +  \
+	# " -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[1]] +\
 
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[2] +  \
-	" -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
-	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
-	" + coding_scheme + " -training_batch_size " + training_batch_size 
-	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[2]) +  \
-	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[2]] +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[2] +  \
+	# " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	# -force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	# " + coding_scheme + " -training_batch_size " + training_batch_size 
+	# + " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[2]) +  \
+	# " -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[2]] +\
 
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[3] +  \
-	" -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
-	-force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
-	" + coding_scheme + " -training_batch_size " + training_batch_size 
-	+ " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[3]) +  \
-	" -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[3]])
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -learning_rate " + lr + " -testing 0 -gpu_index " + gpu_index[3] +  \
+	# " -num_iterations " + max_iter + " -steps " + steps + " -relu " + relu + " -adaptivity_training " + adapt_tr + " -freeze_weights " + freeze_wt + " -freeze_fraction " + ff +  " -exact_llr 0 -H_filename " + h + " -G_filename " + g + " \
+	# -force_all_zero 0 -channel_type " + channel_type + " -nn_eq " + nn_eq + " -coding_scheme \
+	# " + coding_scheme + " -training_batch_size " + training_batch_size 
+	# + " -eb_n0_train_lo " + eb_n0_train_lo + " -eb_n0_train_hi " + eb_n0_train_hi + " -eb_n0_step 1 -entangle_weights " + str(ent_index[3]) +  \
+	# " -use_offline_training_data " + offline_tr_data + " -save_torch_model 1 -saved_model_path " + models[ent_index[3]])
 
 	# gpu_index = ["0", "1", "2"]
 	# # entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node
@@ -68,7 +68,7 @@ freeze_wt = "0"
 interf = "0"
 alpha = "0"
 # nn_eq = "1"
-nn_eq_list = ["0"]#,"1","2"]
+nn_eq_list = ["3"]
 ff = "0"
 lr_list = ["0.005"]#,"0.01"]
 
@@ -79,10 +79,8 @@ if (adapt_tr == "1"):
 relu = "1"
 coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
-# channel_type_list = ["AWGN"]
+channel_type_list = ["AWGN"]
 # channel_type_list = ["OTA"]
-channel_type_list = ["bursty_p1","bursty_p2","bursty_p3","bursty_p4","bursty_p5"]
-
 
 H_filename = ['H_G_mat/BCH_63_36.alist']
 G_filename = ['H_G_mat/G_BCH_63_36.gmat']
@@ -102,9 +100,7 @@ G_filename = ['H_G_mat/G_BCH_63_36.gmat']
 
 # force_idx = 0
 
-# time.sleep(1200)
-
-max_iter = ["5"]
+max_iter = ["1"]
 for mi in max_iter:
 	for nn_eq in nn_eq_list:
 		for i_f in range(1):
@@ -142,16 +138,6 @@ for mi in max_iter:
 								eb_n0_train_lo_tr = "1"
 								eb_n0_train_hi_tr = "8"
 								offline_tr_data = "0"
-							elif (channel_type == "bursty_p1" or channel_type == "bursty_p2" or channel_type == "bursty_p3" or channel_type == "bursty_p4" or channel_type == "bursty_p5"):
-								training_batch_size = "360"
-								eb_n0_train_lo_tr = "1"
-								eb_n0_train_hi_tr = "18"
-								offline_tr_data = "0"
-							elif (channel_type == "interf_2" or channel_type == "interf_4" or channel_type == "interf_6" or channel_type == "interf_8"):
-								training_batch_size = "320"
-								eb_n0_train_lo_tr = "1"
-								eb_n0_train_hi_tr = "16"
-								offline_tr_data = "0"
 							elif(channel_type == "OTA"):
 								training_batch_size = "90"
 								eb_n0_train_lo_tr = "0"
@@ -177,11 +163,11 @@ for mi in max_iter:
 							# load appropriate orginal models for futher training (if adaptivity)
 							### FIX ME
 							if (relu == "1"):
-								models_folder = "saved_models_sf_df"
+								models_folder = "saved_models_sf_df_lte"
 							else:
 								models_folder = "saved_models_new_mod"
 							saved_models_new = []
-							prev_steps = "19000"
+							prev_steps = "20000"
 							if (adapt_tr == "1"):
 								prev_steps = "20000"
 							model_prefix = models_folder +  "/intermediate_models/nams_" + prefix + "_st_" + prev_steps + "_lr_" + lr + "_" + chan_tr + "_ent_"
@@ -257,11 +243,11 @@ for mi in max_iter:
 							# load appropriate orginal models for futher training (if adaptivity)
 							### FIX ME
 							if (relu == "1"):
-								models_folder = "saved_models_sf_df"
+								models_folder = "saved_models_sf_df_lte"
 							else:
 								models_folder = "saved_models_new_mod"
 							saved_models_new = []
-							prev_steps = "19000"
+							prev_steps = "20000"
 							if (adapt_tr == "1"):
 								prev_steps = "20000"
 							model_prefix = models_folder +  "/intermediate_models/nams_" + prefix + "_st_" + prev_steps + "_lr_" + lr + "_" + chan_tr + "_ent_"
