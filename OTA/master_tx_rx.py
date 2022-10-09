@@ -14,122 +14,167 @@ data_generate = True
 sanity_check = True
 OTA_data = True
 Frame_802_11 = True
-N_captures = 2
 save_data = True
 
-if save_data:
-    id = "QPSK_FRAMED_OTA_3"
+N_captures = 10
+# tx_gain_vec = np.arange(10,-5,-1)
+# rx_gain_vec = np.arange(2,0.5,-0.5)
 
-    if OTA_data == True and Frame_802_11 == False:
-        raise Exception("OTA Data must be Framed")
+tx_gain_vec = np.arange(20,11,-1)
+rx_start = 10
+rx_end = rx_start - 0.5
+rx_gain_vec = np.arange(rx_start,rx_end,-0.5)
 
-    current_date = date.today()
-    file_name = "Datasets/Dataset_" + str(id) + "_" + str(current_date)
+for i_r in tqdm(range(rx_gain_vec.size)):
+    rx_gain = rx_gain_vec[i_r]
+    
+    for i_t in tqdm(range(tx_gain_vec.size)):
 
-    # make a folder for today's data
-    try:
-        try:
-            os.mkdir("Datasets")
-        except:
-            pass
-        os.mkdir(file_name)
-        os.mkdir(file_name + "/Figures")
-    except:
-        pass
+        if save_data:
+            id = "QPSK_FRAMED_OTA_3"
 
-print(" Capture Process Starts")
-print("=========================\n")
-print("Starting MATLAB")
+            if OTA_data == True and Frame_802_11 == False:
+                raise Exception("OTA Data must be Framed")
 
-eng = matlab.engine.start_matlab()
+            current_date = date.today()
+            file_name = "Datasets/Dataset_" + str(id) + "_" + str(current_date)
 
-if save_data:
-    Data_Input, Encoder_Output, Receiver_Output, Data_Output, Frame_Error = (
-        [],
-        [],
-        [],
-        [],
-        [],
-    )
+            # make a folder for today's data
+            try:
+                try:
+                    os.mkdir("Datasets")
+                except:
+                    pass
+                os.mkdir(file_name)
+                os.mkdir(file_name + "/Figures")
+            except:
+                pass
 
-tx_gain = 10
-rx_gain = 5
+        print(" Capture Process Starts")
+        print("=========================\n")
+        print("Starting MATLAB")
 
-for i in tqdm(range(N_captures)):
-    # Generate TX
-    if Frame_802_11:
-        eng.TX_data_generate("802_11 Framed", nargout=0)
-    else:
-        eng.TX_data_generate("Raw Data", nargout=0)
-    # Pass through Channel
+        eng = matlab.engine.start_matlab()
 
-    if OTA_data:
-        os.system("python3 flow_graph.py -tx_gain " + str(tx_gain) + " -rx_gain " + str(rx_gain))
-    else:
-        eng.awgn_channel("complex_noise", nargout=0)
+        if save_data:
+            Data_Input, Encoder_Output, Receiver_Output, Demod_Input, Data_Output, Frame_Error = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
 
-    # Decode RX
-    if Frame_802_11:
-        eng.RX_data_extract("802_11 Framed", nargout=0)
-    else:
-        eng.RX_data_extract("Raw Data", nargout=0)
+        tx_gain = np.float(tx_gain_vec[i_t])
 
-    if save_data:
-        # Prepare Data
-        # Input Data
-        Data = sio.loadmat("data_files/ota_data/msg_data.mat")
-        Data_Input.append(Data["msg_data"])
+        for i in tqdm(range(N_captures)):
+            # Generate TX
+            if Frame_802_11:
+                eng.TX_data_generate("802_11 Framed", i, nargout=0)
+            else:
+                eng.TX_data_generate("Raw Data", nargout=0)
+            # Pass through Channel
 
-        # Encoder Output
-        Data = sio.loadmat("data_files/ota_data/enc_data.mat")
-        Encoder_Output.append(Data["enc_data"])
+            if OTA_data:
+                os.system("python3 flow_graph.py -tx_gain " + str(tx_gain) + " -rx_gain " + str(rx_gain))
+            else:
+                eng.awgn_channel("complex_noise", nargout=0)
 
-        # Receiver Output
-        Data = sio.loadmat("data_files/ota_data/rx_data.mat")
-        Receiver_Output.append(Data["rx_data"])
+            # Decode RX
+            if Frame_802_11:
+                eng.RX_data_extract("802_11 Framed", nargout=0)
+            else:
+                eng.RX_data_extract("Raw Data", nargout=0)
 
-        # Output LLR
-        Data = sio.loadmat("data_files/ota_data/demod_data.mat")
-        Data_Output.append(Data["demod_data"])
+            if save_data:
+                # Prepare Data
+                # Input Data
+                Data = sio.loadmat("data_files/ota_data/msg_data.mat")
+                Data_Input.append(Data["msg_data"])
 
-        # Frame Error
-        Data = sio.loadmat("data_files/ota_data/frame_error.mat")
-        Frame_Error.append(Data["frame_error"])
+                # Encoder Output
+                Data = sio.loadmat("data_files/ota_data/enc_data.mat")
+                Encoder_Output.append(Data["enc_data"])
 
-if save_data:
-    Data_Input = np.array(Data_Input)
-    Data_Output = np.array(Data_Output)
-    Receiver_Output = np.array(Receiver_Output)
-    Encoder_Output = np.array(Encoder_Output)
-    Frame_Error = np.array(Frame_Error)
+                # Receiver Output
+                Data = sio.loadmat("data_files/ota_data/rx_data.mat")
+                Receiver_Output.append(Data["rx_data"])
 
-    if ~Frame_802_11:
-        Data_Input = np.expand_dims(Data_Input, -1)
-        Encoder_Output = np.expand_dims(Encoder_Output, -1)
-        Receiver_Output = np.expand_dims(Receiver_Output, -1)
-        Data_Output = np.expand_dims(Data_Output, -1)
+                # Demod Input
+                Data = sio.loadmat("data_files/ota_data/demod_input.mat")
+                Demod_Input.append(Data["demod_input"])
 
-if save_data:
-    BERHI = [0.3, 0.1, 0.05, 0.01, 0.005, 0.001]
-    BERLO = [0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
+                # Output LLR
+                Data = sio.loadmat("data_files/ota_data/demod_data.mat")
+                Data_Output.append(Data["demod_data"])
 
-    for i in range(len(BERHI)):
-        berHi = BERHI[i]
-        berLo = BERLO[i]
-        _, X, _, Z = save_datafiles(
-            file_name,
-            N_captures,
-            Frame_Error,
-            Data_Input,
-            Encoder_Output,
-            Receiver_Output,
-            Data_Output,
-            berHi,
-            berLo,
-            i,
-            tx_gain,
-            rx_gain
-        )
+                # Frame Error
+                Data = sio.loadmat("data_files/ota_data/frame_error.mat")
+                Frame_Error.append(Data["frame_error"])
+
+        if save_data:
+            Data_Input = np.array(Data_Input)
+            Demod_Input = np.array(Demod_Input)
+            Data_Output = np.array(Data_Output)
+            Receiver_Output = np.array(Receiver_Output)
+            Encoder_Output = np.array(Encoder_Output)
+            Frame_Error = np.array(Frame_Error)
+
+            if ~Frame_802_11:
+                Data_Input = np.expand_dims(Data_Input, -1)
+                Encoder_Output = np.expand_dims(Encoder_Output, -1)
+                Receiver_Output = np.expand_dims(Receiver_Output, -1)
+                Demod_Input = np.expand_dims(Demod_Input, -1)
+                Data_Output = np.expand_dims(Data_Output, -1)
+
+        if save_data:
+            BERHI = [0.3, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
+            BERLO = [0.1, 0.05, 0.01, 0.005, 0.001, 0.0001, 0.00000]
+            bin = 1
+            for i in range(len(BERHI)):
+                berHi = BERHI[i]
+                berLo = BERLO[i]
+                _, X, _, Z = save_datafiles(
+                    file_name,
+                    N_captures,
+                    Frame_Error,
+                    Data_Input,
+                    Encoder_Output,
+                    Receiver_Output,
+                    Demod_Input,
+                    Data_Output,
+                    berHi,
+                    berLo,
+                    i,
+                    tx_gain,
+                    rx_gain,
+                    bin
+                )
+
+            BERHI = [0.4]
+            # BERLO = [0.00001]
+            BERLO = [0.000000]
+            bin = 0
+            for i in range(len(BERHI)):
+                berHi = BERHI[i]
+                berLo = BERLO[i]
+                _, X, _, Z = save_datafiles(
+                    file_name,
+                    N_captures,
+                    Frame_Error,
+                    Data_Input,
+                    Encoder_Output,
+                    Receiver_Output,
+                    Demod_Input,
+                    Data_Output,
+                    berHi,
+                    berLo,
+                    i,
+                    tx_gain,
+                    rx_gain,
+                    bin
+                )
 
         # # Plot histogram
         # plot_histogram(file_name, X, Z, berHi, berLo)
