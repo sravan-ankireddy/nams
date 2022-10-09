@@ -4,7 +4,7 @@ bch = 1;
 
 % num frames
 % N = 1200;
-N = 24*15*3;
+N = 24*15*3*2;
 
 chan = "ETU"; %EPA/EVA/ETU
 doppler_freq = 0;
@@ -31,11 +31,11 @@ if (bch == 1)
     % end
 
     n = 63;
-    k = 30;
+    k = 36;
     filename = "H_mat/BCH_" + n + "_" + k + ".alist";
 
     if (chan == "ETU")
-        SNRs = 11:24;
+        SNRs = 5:22;
     elseif (chan == "EVA")
         SNRs = 10:25;
     end
