@@ -1,19 +1,8 @@
 function RX_802_11_Framed()
 
     currentFolder = pwd;
-    addpath(strcat(currentFolder, '/Imp_Files'));
-    addpath(strcat(currentFolder, '/Imp_Functions'));
+    addpath(strcat(currentFolder, '/utils'));
     run('Parameters.m');
-
-    load('data_files/par_gen_data/H_BCH_63_36.mat','H');
-    H = double(H);
-    
-    % creating sparse logical version of H
-    Hs = sparse(logical(H));
-    
-    % create comm objects    
-    ldpcDecCfg = ldpcDecoderConfig(Hs,'norm-min-sum');
-    max_iter = 5;
 
     % Extraction of the received data
     RX = read_complex_binary('RX.bin');
@@ -23,7 +12,8 @@ function RX_802_11_Framed()
     st_id_list = STS_detect(RX, total_no_of_samples);
 
     Data_Output = zeros(code_len, no_of_blocks, 2*no_of_frames);
-    frame_error = zeros(2*no_of_frames, 2);
+    Demod_Input = zeros(size(Data_Output));
+    frame_error = 10*ones(2*no_of_frames, 2);
     rx_data = zeros(total_msg_symbols, 2*no_of_frames);
 
     for n_detect = 1:length(st_id_list)
@@ -136,28 +126,37 @@ function RX_802_11_Framed()
         % Decoder
         demod_data = qamdemod(detected_symbols, mod_order, 'OutputType', 'approxllr', 'UnitAveragePower', true);
         demod_data = demod_data(1:end - extra_bits);
+        demod_input = detected_symbols(1:end - extra_bits); % FIX ME : works only for BPSK
 
         demod_data = reshape(demod_data, code_len, no_of_blocks);
+        demod_input = reshape(demod_input, code_len, no_of_blocks);
 
-        msg_est = ldpcDecode(demod_data,ldpcDecCfg,max_iter);
-        msg_data = open('data_files/ota_data/msg_data.mat');
-        msg_data = msg_data.msg_data(:, :, frame_num + 1);
-        bit_err = biterr(msg_est, msg_data) / encoded_no_bits;
+        if (code == "LDPC" || code == "BCH")
+            msg_est = ldpcDecode(demod_data,ldpcDecCfg,max_iter);
+            msg_data = open('data_files/ota_data/msg_data.mat');
+            msg_data = msg_data.msg_data(:, :, frame_num + 1);
+            bit_err = biterr(msg_est, msg_data) / encoded_no_bits;
+            frame_error(n_detect, 1) = bit_err;
+            fprintf("Frame: %d  SNR:  %.2f  decoded BER: %1.6f\n", frame_num, snr_estimate, bit_err);
+        else
+            % Raw estimate
+            code_est = double(demod_data < 0);
+            code_data = open('data_files/ota_data/enc_data.mat');
+            code_data = code_data.enc_data(:, :, frame_num + 1);
+            bit_error_code = biterr(code_est, code_data) / no_encoder_out_bits;
+            frame_error(n_detect, 1) = bit_error_code;
+            fprintf("Frame: %d  SNR:  %.2f  Raw BER: %1.6f\n", frame_num, snr_estimate, bit_error_code);
+        end
 
-        code_est = double(demod_data < 0);
-        code_data = open('data_files/ota_data/enc_data.mat');
-        code_data = code_data.enc_data(:, :, frame_num + 1);
-        bit_error_code = biterr(code_est, code_data) / no_encoder_out_bits;
-        fprintf("Frame: %d  SNR:  %.2f  BER: %1.6f\n", frame_num, snr_estimate, bit_err);
-%         fprintf("Frame: %d  SNR:  %.2f  code BER: %1.6f\n", frame_num, snr_estimate, bit_error_code);
-
-        frame_error(n_detect, 1) = bit_err;
         frame_error(n_detect, 2) = frame_num;
         Data_Output(:, :, n_detect) = demod_data;
+        Demod_Input(:, :, n_detect) = demod_input;
     end
     demod_data = Data_Output;
+    demod_input = Demod_Input;
     save('data_files/ota_data/rx_data.mat', 'rx_data');
     save('data_files/ota_data/demod_data.mat', 'demod_data')
+    save('data_files/ota_data/demod_input.mat', 'demod_input')
     save('data_files/ota_data/frame_error.mat', 'frame_error')
 end
 
@@ -165,7 +164,7 @@ function st_id = STS_detect(RX, total_no_of_samples)
 
     window_size = 64;
     mean_size = 64;
-    corr_th = 0.22;
+    corr_th = 0.32;
     count_cn = 90;
 
     L = length(RX) - total_no_of_samples;

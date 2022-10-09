@@ -1,19 +1,10 @@
-function TX_802_11_Framed()
+function TX_802_11_Framed(seed)
     currentFolder = pwd;
     addpath(strcat(currentFolder, '/utils'));
 
     run('Parameters.m');
     
-    load('data_files/par_gen_data/H_BCH_63_36.mat','H');
-    H = double(H);
-    
-    % creating sparse logical version of H
-    Hs = sparse(logical(H));
-
-    % create comm objects
-    ldpcEncCfg = ldpcEncoderConfig(Hs);
-
-    rng(30);
+    rng(seed);
     %Frame Data
     msg_data = zeros(msg_len, no_of_blocks, no_of_frames);
     enc_data = zeros(code_len, no_of_blocks, no_of_frames);
@@ -29,8 +20,21 @@ function TX_802_11_Framed()
         lts = [];
 
         data_input = randi([0 1], msg_len, no_of_blocks);
-        encoded_data = ldpcEncode(data_input,ldpcEncCfg);
-        encoder_data = [encoded_data(:); zeros(extra_bits, 1)];
+        if (code == "LDPC" || code == "BCH")
+            encoded_data = ldpcEncode(data_input,ldpcEncCfg);
+            encoder_data = [encoded_data(:); zeros(extra_bits, 1)];
+        else
+            rel = rs(rs < code_len+1);
+            data_pos = sort(rel(1:msg_len));
+            encoded_data = zeros(code_len, no_of_blocks);
+            for ii = 1:no_of_blocks
+                data = data_input(:,ii);
+                data_in = zeros(code_len,1);
+                data_in(data_pos) = data;
+                encoded_data(:,ii) = polar_encode(data_in);
+            end
+            encoder_data = [encoded_data(:); zeros(extra_bits, 1)];
+        end
 
         % Modulation
         mod_symbols = qammod(encoder_data, mod_order, 'InputType', 'bit', 'UnitAveragePower', true);
