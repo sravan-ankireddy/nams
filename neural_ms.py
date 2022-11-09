@@ -78,8 +78,8 @@ def get_args():
 	parser.add_argument('-relu', type=int, default=0)
 
 	# params for cv/vc model
-	parser.add_argument('-cv_model', type=int, default=1)
-	parser.add_argument('-vc_model', type=int, default=0)
+	parser.add_argument('-cv_model', type=int, default=0)
+	parser.add_argument('-vc_model', type=int, default=1)
 	
 	# params for clipping the grads
 	parser.add_argument('-clip_grads', type=int, default=0)
@@ -212,9 +212,14 @@ results_folder = "ber_data_icc"
 # results_folder = "ber_data_icc_from_AWGN"
 
 if (args.cv_model == 0 and args.vc_model == 1):
-	models_folder = "saved_models_sf_df_lte_vc"
-	results_folder = "ber_data_sf_df_lte_vc"
+	models_folder = "saved_models_vc"
+	results_folder = "ber_data_vc"
 
+if not os.path.exists(models_folder):
+    os.makedirs(models_folder)
+if not os.path.exists(results_folder):
+    os.makedirs(results_folder)
+    
 # results_folder = "ber_data_debug"
 
 if (args.decoder_type == "neural_ms"):
@@ -328,7 +333,8 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 		else:
 			idx = 0
 
-		# Replicate the weights by repeating for each column
+		# Replicate the weights by repeating for each column : edges are stores column by column i.e, 
+  		# for each var node, count all edges and move to next var node
 		if (args.entangle_weights == 2):
 			B_vc_vec = torch.tensor([]).to(device)
 			W_vc_vec = torch.tensor([]).to(device)
@@ -338,8 +344,8 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 				W_vc_m = model.W_vc[0,im]
 				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
 				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
-
-		# Replicate the weights by repeating for each row
+    
+		# Replicate the weights by repeating for each row : FIX ME, incorrect : need to read in a different fashion
 		elif (args.entangle_weights == 3):
 			B_vc_vec = torch.tensor([]).to(device)
 			W_vc_vec = torch.tensor([]).to(device)
@@ -726,16 +732,24 @@ if TRAINING :
 		if (args.save_torch_model == 1 and step % saver_step == 0):
 			# store the weights
 			print("\n********* Saving the Training weights *********\n")
+			models_folder_int = models_folder + "/intermediate_models/"
+			models_folder_mat = models_folder + "/model_weights_mat/"
+   
+			if not os.path.exists(models_folder_int):
+				os.makedirs(models_folder_int)
+			if not os.path.exists(models_folder_mat):
+				os.makedirs(models_folder_mat)
+       
 			if (args.adaptivity_training == 1):
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
 			else:
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
 				
 			if (args.freeze_weights == 1):
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
 			
 			if (args.interf == 1):
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
 			
 			torch.save(model.state_dict(), filename)
 			# save to matlab for analysis
@@ -756,11 +770,11 @@ if TRAINING :
 				W_ch = model.W_ch.cpu().data.numpy()
 				weights = {'B_cv':B_cv, 'W_cv':W_cv, 'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
 			if (args.adaptivity_training == 1):
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			if (args.freeze_weights == 1):
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
 			sio.savemat(filename_mat,weights)
 		# breakpoint()
 		step += 1
@@ -785,15 +799,15 @@ if TRAINING :
 		if (args.save_torch_model == 1):
 			# save in intermediate folder
 			if (args.adaptivity_training == 1):
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
 			else:
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
 			
 			if (args.freeze_weights == 1):
-				filename =  models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
 			
 			if (args.interf == 1):
-				filename = models_folder + "/intermediate_models/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
+				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
 			
 			torch.save(model.state_dict(), filename) 
 			# save in main folder
@@ -833,11 +847,11 @@ if TRAINING :
 				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
 			sio.savemat(filename_mat,weights_temp)
 			if (args.adaptivity_training == 1):
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			if (args.freeze_weights == 1):
-				filename_mat = models_folder + "/model_weights_mat/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
+				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
 			sio.savemat(filename_mat,weights_temp)
 
 eb_n0_dB = np.arange(args.eb_n0_lo, args.eb_n0_hi+args.eb_n0_step, args.eb_n0_step)
