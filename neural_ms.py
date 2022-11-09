@@ -206,14 +206,21 @@ if (args.adaptivity_training == 1):
 	args.continue_training = 0
 
 # Chosse the appropriate data_folders
-models_folder = "saved_models_sf_df_lte"
-# results_folder = "ber_data_sf_df_lte"
-results_folder = "ber_data_icc"
-# results_folder = "ber_data_icc_from_AWGN"
+if (args.cv_model == 1 and args.vc_model == 0):
+    models_folder_main = 'saved_models_cv'
+    results_folder_main = 'ber_data_cv'
 
 if (args.cv_model == 0 and args.vc_model == 1):
-	models_folder = "saved_models_vc"
-	results_folder = "ber_data_vc"
+    models_folder_main = 'saved_models_vc'
+    results_folder_main = 'ber_data_vc'
+
+if (args.cv_model == 1 and args.vc_model == 1):
+    models_folder_main = 'saved_models_cv_vc'
+    results_folder_main = 'ber_data_cv_vc'
+
+models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+results_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+
 
 if not os.path.exists(models_folder):
     os.makedirs(models_folder)
@@ -726,7 +733,7 @@ if TRAINING :
 				print ("W_ch : ")
 				print (model.W_ch)
 
-		saver_step = 500
+		saver_step = 1000
 		if (args.adaptivity_training == 1):
 			saver_step = 500
 		if (args.save_torch_model == 1 and step % saver_step == 0):
@@ -734,11 +741,14 @@ if TRAINING :
 			print("\n********* Saving the Training weights *********\n")
 			models_folder_int = models_folder + "/intermediate_models/"
 			models_folder_mat = models_folder + "/model_weights_mat/"
+			models_folder_mat_final =  models_folder + "/model_weights_mat_final/"
    
 			if not os.path.exists(models_folder_int):
 				os.makedirs(models_folder_int)
 			if not os.path.exists(models_folder_mat):
 				os.makedirs(models_folder_mat)
+			if not os.path.exists(models_folder_mat_final):
+				os.makedirs(models_folder_mat_final)
        
 			if (args.adaptivity_training == 1):
 				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
@@ -840,11 +850,11 @@ if TRAINING :
 				W_ch_temp = model.W_ch.cpu().data.numpy()
 				weights_temp = {'B_cv':B_cv_temp, 'W_cv':W_cv_temp, 'B_vc':B_vc_temp, 'W_vc':W_vc_temp, 'W_ch':W_ch_temp}
 			if (args.adaptivity_training == 1):
-				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat_final + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
-				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				filename_mat = models_folder_mat_final + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			if (args.freeze_weights == 1):
-				filename_mat = models_folder + "/model_weights_mat_final/nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
+				filename_mat = models_folder_mat_final + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
 			sio.savemat(filename_mat,weights_temp)
 			if (args.adaptivity_training == 1):
 				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
