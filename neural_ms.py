@@ -78,8 +78,8 @@ def get_args():
 	parser.add_argument('-relu', type=int, default=0)
 
 	# params for cv/vc model
-	parser.add_argument('-cv_model', type=int, default=0)
-	parser.add_argument('-vc_model', type=int, default=1)
+	parser.add_argument('-cv_model', type=int, default=1)
+	parser.add_argument('-vc_model', type=int, default=0)
 	
 	# params for clipping the grads
 	parser.add_argument('-clip_grads', type=int, default=0)
@@ -218,9 +218,14 @@ if (args.cv_model == 1 and args.vc_model == 1):
     models_folder_main = 'saved_models_cv_vc'
     results_folder_main = 'ber_data_cv_vc'
 
-models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
-results_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+results_folder = results_folder_main
 
+models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+# results_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+
+if (args.channel_type == "alpha_interf"):
+	models_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+	# results_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 
 if not os.path.exists(models_folder):
     os.makedirs(models_folder)
@@ -697,7 +702,7 @@ if TRAINING :
 				FastFading = False
 				if (args.interf == 1):
 					BPSK_codewords[:,start_idx:end_idx] = BPSK_codewords[:,start_idx:end_idx] + args.alpha*BPSK_codewords_interf[:,start_idx:end_idx]
-				received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, noise, args.channel_type, FastFading, exact_llr)
+				received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
 				llr_in[:,start_idx:end_idx] = 2*received_codewords[:,start_idx:end_idx]/(sigma**2)
 				sigma_vec[:,start_idx:end_idx] = sigma
 				SNR_vec[:,start_idx:end_idx] = SNRs[i]
@@ -973,7 +978,7 @@ if TESTING :
 				exact_llr = args.exact_llr
 				if (args.interf == 1):
 					BPSK_codewords = BPSK_codewords + args.alpha*BPSK_codewords_interf
-				received_codewords, soft_input = apply_channel(BPSK_codewords, sigma, noise, args.channel_type, FastFading, exact_llr)
+				received_codewords, soft_input = apply_channel(BPSK_codewords, sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
 				llr_in = 2.0*received_codewords/(sigma*sigma)
 
 				# Phase 2 : decode using wbp
@@ -1044,8 +1049,11 @@ if TESTING :
 
 if (args.channel_type == 'rayleigh_fast'):
 	chan_name =  args.channel_type + "_" + str(args.exact_llr)
+elif (args.channel_type == 'alpha_interf'):
+    chan_name =  args.channel_type + "_" + str(args.alpha)
 else:
 	chan_name = args.channel_type
+
 # save BERs from grid search
 if (args.grid_search == 1):
 	ind_var = 0
@@ -1074,6 +1082,8 @@ if (args.grid_search == 1):
 if (args.save_ber_to_mat == 1):
 	ind_var = 0
 	chan_name = str(args.channel_type)
+	if (args.channel_type == 'alpha_interf'):
+		chan_name =  args.channel_type + "_" + str(args.alpha)
 	if (args.adaptivity_training == 1):
 		res_file_name = results_folder + "/BERs_"+str(args.coding_scheme)+"_"+chan_name+"_"+str(n)+"_"+str(k)+"_adapt_from_" + base_channel + "_nn_eq_" + str(args.nn_eq) + "_lr_" + str(args.learning_rate) + "_SNR_"+ str(int(args.eb_n0_lo))+"_"+str(int(args.eb_n0_hi))+".mat"
 	else:
@@ -1104,6 +1114,8 @@ if (args.save_ber_to_mat == 1):
 
 	ind_var = 0
 	chan_name = str(args.channel_type)
+	if (args.channel_type == 'alpha_interf'):
+		chan_name =  args.channel_type + "_" + str(args.alpha)
 	if (args.adaptivity_training == 1):
 		res_file_name = results_folder + "/FERs_"+str(args.coding_scheme)+"_"+chan_name+"_"+str(n)+"_"+str(k)+"_adapt_from_" + base_channel + "_nn_eq_" + str(args.nn_eq) + "_lr_" + str(args.learning_rate) + "_SNR_"+ str(int(args.eb_n0_lo))+"_"+str(int(args.eb_n0_hi))+".mat"
 	else:
