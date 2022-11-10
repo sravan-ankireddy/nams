@@ -66,21 +66,21 @@ def save_weights(h, g, coding_scheme, channel_type, alpha, nn_eq, training_batch
 adapt_tr = "0"
 freeze_wt = "0"
 interf = "0"
-alpha = "0"
+alpha = "0.25"
 # nn_eq = "1"
-nn_eq_list = ["1","2","0"]#,"1","2"]
+nn_eq_list = ["1"]#,"2","0"]#,"1","2"]
 ff = "0"
 lr_list = ["0.005"]#,"0.01"]
 
-steps = "20000"
+steps = "10000"
 if (adapt_tr == "1"):
 	steps = "20000"
 
 relu = "1"
 coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
-channel_type_list = ["AWGN"]
-# channel_type_list = ["ETU"]
+# channel_type_list = ["AWGN"]
+channel_type_list = ["alpha_interf"]
 # channel_type_list = ["bursty_p1","bursty_p2","bursty_p3","bursty_p4","bursty_p5"]
 
 
@@ -143,9 +143,9 @@ for mi in max_iter:
 								eb_n0_train_hi_tr = "8"
 								offline_tr_data = "0"
 							elif (channel_type == "alpha_interf"):
-								training_batch_size = "80"
+								training_batch_size = "120"
 								eb_n0_train_lo_tr = "1"
-								eb_n0_train_hi_tr = "8"
+								eb_n0_train_hi_tr = "12"
 								offline_tr_data = "0"
 							elif (channel_type == "bursty_p1" or channel_type == "bursty_p2" or channel_type == "bursty_p3" or channel_type == "bursty_p4" or channel_type == "bursty_p5"):
 								training_batch_size = "360"

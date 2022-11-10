@@ -221,6 +221,9 @@ if (args.cv_model == 1 and args.vc_model == 1):
 models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 results_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 
+if (args.channel_type == "alpha_interf"):
+	models_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+	results_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 
 if not os.path.exists(models_folder):
     os.makedirs(models_folder)
