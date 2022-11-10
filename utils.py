@@ -1,6 +1,7 @@
 import numpy as np
 np.random.seed(1)
 from scipy.io import loadmat
+from scipy.linalg import circulant
 import torch.nn.functional as F
 import torch
 torch.manual_seed(1)
@@ -184,9 +185,19 @@ def convert_dense_to_alist(H_filename):
 		f.write(str(r) + "\n")
 	f.close()
 
-def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
+def apply_channel(codewords, sigma, alpha, noise, channel, FastFading, exact_llr):
 	if (channel == 'AWGN'):
 		received_codewords = codewords + noise
+		soft_input = 2.0*received_codewords/(sigma*sigma)
+	
+	elif (channel == "alpha_interf"):
+		cw_size = codewords.shape[0]
+		interf_vector = np.power(alpha,np.arange(cw_size))
+		interf_vector[4:] = 0
+		interf_matrix = circulant(interf_vector).transpose()
+		interf_matrix = np.triu(interf_matrix)
+		interf_matrix = np.maximum( interf_matrix, interf_matrix.transpose() )
+		received_codewords = np.matmul(interf_matrix, codewords) + noise
 		soft_input = 2.0*received_codewords/(sigma*sigma)
 
 	elif (channel == 'interf_2' or channel == 'interf_4' or channel == 'interf_6' or channel == 'interf_8'):
@@ -232,7 +243,7 @@ def apply_channel(codewords, sigma, noise, channel, FastFading, exact_llr):
 			ind = np.random.randint(0,codewords.shape[0]-S+1)
 			received_codewords[ind:ind+S,jj] = received_codewords[ind:ind+S,jj] + noise_bursty[:,jj]
 
-		soft_input = 2.0*received_codewords/(sigma*sigma)
+		soft_input = 2.0*received_codewords/(sigma*sigma)  
 
 	elif (channel == 'rayleigh_fast'): ##rayleigh fast
 		data_ones = np.ones_like(codewords)

@@ -78,8 +78,8 @@ def get_args():
 	parser.add_argument('-relu', type=int, default=0)
 
 	# params for cv/vc model
-	parser.add_argument('-cv_model', type=int, default=0)
-	parser.add_argument('-vc_model', type=int, default=1)
+	parser.add_argument('-cv_model', type=int, default=1)
+	parser.add_argument('-vc_model', type=int, default=0)
 	
 	# params for clipping the grads
 	parser.add_argument('-clip_grads', type=int, default=0)
@@ -697,7 +697,7 @@ if TRAINING :
 				FastFading = False
 				if (args.interf == 1):
 					BPSK_codewords[:,start_idx:end_idx] = BPSK_codewords[:,start_idx:end_idx] + args.alpha*BPSK_codewords_interf[:,start_idx:end_idx]
-				received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, noise, args.channel_type, FastFading, exact_llr)
+				received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
 				llr_in[:,start_idx:end_idx] = 2*received_codewords[:,start_idx:end_idx]/(sigma**2)
 				sigma_vec[:,start_idx:end_idx] = sigma
 				SNR_vec[:,start_idx:end_idx] = SNRs[i]
@@ -973,7 +973,7 @@ if TESTING :
 				exact_llr = args.exact_llr
 				if (args.interf == 1):
 					BPSK_codewords = BPSK_codewords + args.alpha*BPSK_codewords_interf
-				received_codewords, soft_input = apply_channel(BPSK_codewords, sigma, noise, args.channel_type, FastFading, exact_llr)
+				received_codewords, soft_input = apply_channel(BPSK_codewords, sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
 				llr_in = 2.0*received_codewords/(sigma*sigma)
 
 				# Phase 2 : decode using wbp

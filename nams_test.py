@@ -1,43 +1,43 @@
 import os
 import time
 
-def run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding,chan,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_test,models,adapt,freeze,ff):
+def run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding,chan,alpha,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_test,models,adapt,freeze,ff):
 
 
 	gpu_id = ["0", "1", "2", "3"]
 
 	testing_batch_size_bp = "10000"
 	max_iter = "5"
-	os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -1 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[0] + " -decoder_type spa -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -2 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[1] + " -decoder_type min_sum -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h+" -G_filename "+ g )
+	os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -1 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[0] + " -decoder_type spa -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -entangle_weights -2 -steps " + steps + " -learning_rate " + lr + " -adaptivity_training " + adapt + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[1] + " -decoder_type min_sum -testing_batch_size " + testing_batch_size_bp + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h+" -G_filename "+ g )
 
 	# time.sleep(60)
 
 	# entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
-	ent_id = [0,1,4,6]
-	os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[0]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[0]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[0] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[1]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[1]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[1] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[2]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[2]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[2] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[3]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[3]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[3] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g )
+	# ent_id = [0,1,4,6]
+	# os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[0]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[0]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[0] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[1]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[1]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[1] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[2]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[2]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[2] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[3]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[3]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[3] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g )
 	
 	time.sleep(60)
 	# # gpu_id = ["0", "1", "2"]
 	# # entanglement type - 0 - 5xedges, 1 - 1xedges, 2 - 1xnum_var_nodes, 3 - 1xnum_chk_nodes, 4 - 1xedges_chk_node,  5 - 5xedges_per_chk_node, 6 - 1x1
 	# ent_id = [4,5,6]
-	# os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[0]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[0]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[0] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[1]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[1]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[1] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
-	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[2]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[2]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -gpu_index " + gpu_id[2] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g)# +\
+	# os.system(" CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[0]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[0]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[0] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[1]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[1]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[1] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g +\
+	# " & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -saved_model_path " + models[ent_id[2]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[2]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[2] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g)# +\
 	
 
 adapt = "0"
 freeze = "0"
 ff = "0.2"
 interf = "0"
-alpha = "0"
+alpha = "0.1"
 relu = "1"
 coding_scheme_list = ["BCH"]
 channel_type_list = ["ETU_df_0"]
-channel_type_list = ["bursty_p1"]#["interf_4","interf_2"]
+channel_type_list = ["alpha_interf"]#["interf_4","interf_2"]
 
 H_filename = ['H_G_mat/BCH_63_36.alist']
 G_filename = ['H_G_mat/G_BCH_63_36.gmat']
@@ -95,6 +95,12 @@ for nn_eq in nn_eq_list:
 								testing_batch_size = "4000"
 								eb_n0_lo = "1"
 								eb_n0_hi = "8"
+								offline_ts_data = "0"
+								offline_ts_data = "0"
+							elif (channel_type == "alpha_interf"):
+								testing_batch_size = "4000"
+								eb_n0_lo = "1"
+								eb_n0_hi = "12"
 								offline_ts_data = "0"
 							elif (channel_type == "bursty_p1" or channel_type == "bursty_p2" or channel_type == "bursty_p3" or channel_type == "bursty_p4"):
 								testing_batch_size = "4000"
@@ -158,7 +164,7 @@ for nn_eq in nn_eq_list:
 								models.append(filename)
 							# eb_n0_lo = "12"
 							# eb_n0_hi = "16"
-							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
+							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,alpha,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
 
 						elif (coding_scheme == "LDPC"):
 							h = H_filename[i_f]
@@ -190,6 +196,11 @@ for nn_eq in nn_eq_list:
 								eb_n0_hi = "10"
 								offline_ts_data = "1"
 							elif (channel_type == "AWGN"):
+								testing_batch_size = "1200"
+								eb_n0_lo = "1"
+								eb_n0_hi = "6"
+								offline_ts_data = "0"
+							elif (channel_type == "alpha_interf"):
 								testing_batch_size = "1200"
 								eb_n0_lo = "1"
 								eb_n0_hi = "6"
@@ -244,4 +255,4 @@ for nn_eq in nn_eq_list:
 
 							eb_n0_lo = "-2"
 							eb_n0_hi = "9"
-							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
+							run_sim(h,g,steps,lr,relu,nn_eq,quant_wt,max_iter,coding_scheme,channel_type,alpha,eb_n0_lo,eb_n0_hi,testing_batch_size,offline_ts_data,models,adapt,freeze,ff)
