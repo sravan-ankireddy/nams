@@ -78,7 +78,7 @@ def get_args():
 	parser.add_argument('-relu', type=int, default=0)
 
 	# params for cv/vc model
-	parser.add_argument('-cv_model', type=int, default=1)
+	parser.add_argument('-cv_model', type=int, default=0)
 	parser.add_argument('-vc_model', type=int, default=0)
 	
 	# params for clipping the grads
@@ -218,14 +218,16 @@ if (args.cv_model == 1 and args.vc_model == 1):
     models_folder_main = 'saved_models_cv_vc'
     results_folder_main = 'ber_data_cv_vc'
 
+if (args.cv_model == 0 and args.vc_model == 0): #equivalent to Gaussian approximation
+    models_folder_main = 'saved_models_gw'
+    results_folder_main = 'ber_data_gw'
+
 results_folder = results_folder_main
 
 models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
-# results_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 
 if (args.channel_type == "alpha_interf"):
 	models_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
-	# results_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
 
 if not os.path.exists(models_folder):
     os.makedirs(models_folder)
@@ -310,6 +312,10 @@ class NeuralNetwork(nn.Module):
 			elif (args.nn_eq == 2):
 				self.B_vc = torch.nn.Parameter(B_vc_init)
 				self.W_vc = torch.nn.Parameter(torch.ones(num_w1, num_w2))
+    
+		if(args.cv_model == 0 and args.vc_model == 0): # equal to gaussian model
+			W_gw_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_W)
+			self.W_gw = torch.nn.Parameter(W_gw_init)
 
 model = NeuralNetwork().to(device)
 
@@ -487,14 +493,54 @@ def compute_cv(vc, iteration, batch_size):
 	return cv
 
 # combine messages to get posterior LLRs
-def marginalize(soft_input, cv, batch_size):
+def marginalize(soft_input, iteration, cv, batch_size):
 	weighted_soft_input = soft_input
+ 
+	# prep the gaussian weights
+	if (args.cv_model == 0 and args.vc_model == 0):
+		if (args.entangle_weights == 0 or args.entangle_weights == 5):
+			idx = iteration
+		else:
+			idx = 0
+		
+		# Replicate the weights by repeating for each column
+		if (args.entangle_weights == 2):
+			W_gw_vec = torch.tensor([]).to(device)
+			for im in range(n):
+				deg = var_degrees[im]
+				W_gw_m = model.W_gw[0,im]
+				W_gw_vec = torch.cat((W_gw_vec, W_gw_m.repeat([1,deg])),1)
 
-	soft_output =  torch.tensor([]).to(device) 
+		# Replicate the weights by repeating for each row
+		elif (args.entangle_weights == 3):
+			B_cv_vec = torch.tensor([]).to(device)
+			W_gw_vec = torch.tensor([]).to(device)
+			for im in range(m):
+				deg = chk_degrees[im]
+				W_gw_m = model.W_gw[0,im]
+				W_gw_vec = torch.cat((W_gw_vec, W_gw_m.repeat([1,deg])),1)
+
+		# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
+		elif (args.entangle_weights == 4 or args.entangle_weights == 5):
+			W_gw_vec = model.W_gw.repeat([1,m])
+
+		# Replicate same weight for all edges	
+		elif (args.entangle_weights == 6):
+			W_gw_vec = model.W_gw.repeat([1,num_edges])		
+		else:
+			W_gw_vec = model.W_gw
+	# breakpoint()
+	soft_output =  torch.tensor([]).to(device)
+	start_ind = 0
+	# breakpoint()
 	for i in range(0,n):
 		temp = cv[edges_m[i],:]
+		if (args.cv_model == 0 and args.vc_model == 0):
+			temp = torch.tile(torch.reshape(W_gw_vec[0,start_ind:start_ind+var_degrees[i]],[-1,1]),[1,batch_size])*temp
+			start_ind = start_ind+var_degrees[i]
 		temp = torch.sum(temp,0).to(device) 
 		soft_output = torch.cat((soft_output,temp),0)
+	# breakpoint()
 	soft_output = torch.reshape(soft_output,soft_input.size())
 	if 0:
 		soft_output = torch.tile(torch.reshape(model.W_ch,[-1,1]),[1,batch_size])*weighted_soft_input + soft_output
@@ -518,7 +564,7 @@ def belief_propagation_iteration(soft_input, iteration, cv, m_t, batch_size):
 	# for stat in top_stats[:10]:
 	# 	print(stat)
 	# breakpoint()
-	soft_output = marginalize(soft_input, cv, batch_size)
+	soft_output = marginalize(soft_input, iteration, cv, batch_size)
 	iteration += 1
 
 	return soft_input, soft_output, iteration, cv, m_t
@@ -606,6 +652,10 @@ if TRAINING :
 			optimizer = optim.Adam([model.W_cv, model.W_vc], lr = learning_rate)
 		elif(args.nn_eq == 2):
 			optimizer = optim.Adam([[model.B_cv, model.B_vc]], lr = learning_rate)
+   
+	if (args.cv_model == 0 and args.vc_model == 0):
+		if(args.nn_eq == 1):
+			optimizer = optim.Adam([model.W_gw], lr = learning_rate)
 
 	scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0, last_epoch=-1, verbose=False)
 
@@ -651,6 +701,9 @@ if TRAINING :
 				optimizer = optim.Adam([[model.B_cv, model.B_vc]], lr = learning_rate)
 		scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0, last_epoch=-1, verbose=False)
 
+		if (args.cv_model == 0 and args.vc_model == 0):
+			if(args.nn_eq == 1):
+				optimizer = optim.Adam([model.W_gw], lr = learning_rate)
 	step = 0
 	if (args.continue_training == 1):
 		step = 19000+1
@@ -737,6 +790,10 @@ if TRAINING :
 				print (model.W_vc)
 				print ("W_ch : ")
 				print (model.W_ch)
+			if (args.cv_model == 0 and args.vc_model == 0):
+				print ("W_gw : ")
+				print (model.W_gw)
+				
 
 		saver_step = 1000
 		if (args.adaptivity_training == 1):
@@ -784,6 +841,9 @@ if TRAINING :
 				W_vc = model.W_vc.cpu().data.numpy()
 				W_ch = model.W_ch.cpu().data.numpy()
 				weights = {'B_cv':B_cv, 'W_cv':W_cv, 'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
+			elif (args.cv_model == 0 and args.vc_model == 0):
+				W_gw = model.W_gw.cpu().data.numpy()
+				weights = {'W_gw':W_gw}
 			if (args.adaptivity_training == 1):
 				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
@@ -810,6 +870,9 @@ if TRAINING :
 			print (model.W_vc)
 			print ("W_ch : ")
 			print (model.W_ch)
+		if (args.cv_model == 0 and args.vc_model == 0):
+			print ("W_gw : ")
+			print (model.W_gw)
 
 		if (args.save_torch_model == 1):
 			# save in intermediate folder
@@ -854,6 +917,9 @@ if TRAINING :
 				W_vc_temp = model.W_vc.cpu().data.numpy()
 				W_ch_temp = model.W_ch.cpu().data.numpy()
 				weights_temp = {'B_cv':B_cv_temp, 'W_cv':W_cv_temp, 'B_vc':B_vc_temp, 'W_vc':W_vc_temp, 'W_ch':W_ch_temp}
+			elif (args.cv_model == 0 and args.vc_model == 0):
+				W_gw = model.W_gw.cpu().data.numpy()
+				weights_temp = {'W_gw':W_gw}
 			if (args.adaptivity_training == 1):
 				filename_mat = models_folder_mat_final + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(args.steps) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
 			else:
@@ -934,7 +1000,7 @@ if TESTING :
 			max_frames = min(num_frames - testing_batch_size, max_frames)
 
 		# simulate frames
-		while ((FE < min_frame_errors) or (frame_count <300000)) and (frame_count < max_frames) :
+		while ((FE < min_frame_errors) or (frame_count <100000)) and (frame_count < max_frames) :
 			frame_count += testing_batch_size
 
 			if (args.use_offline_testing_data == 1):
