@@ -78,7 +78,8 @@ def get_args():
 	parser.add_argument('-relu', type=int, default=0)
 
 	# params for cv/vc model
-	parser.add_argument('-cv_model', type=int, default=0)
+	parser.add_argument('-set_model', type=str, default="cv")
+	parser.add_argument('-cv_model', type=int, default=1)
 	parser.add_argument('-vc_model', type=int, default=0)
 	
 	# params for clipping the grads
@@ -205,6 +206,15 @@ print("Now running using .... " + str(device))
 if (args.adaptivity_training == 1):
 	args.continue_training = 0
 
+if (args.set_model == "cv"):
+	args.cv_model == 1 and args.vc_model == 0
+elif (args.set_model == "vc"):
+	args.cv_model == 0 and args.vc_model == 1
+elif (args.set_model == "cv_vc"):
+	args.cv_model == 1 and args.vc_model == 1
+elif (args.set_model == "gw"):
+	args.cv_model == 0 and args.vc_model == 0
+
 # Chosse the appropriate data_folders
 if (args.cv_model == 1 and args.vc_model == 0):
     models_folder_main = 'saved_models_cv'
@@ -228,6 +238,15 @@ models_folder = f'{models_folder_main}/{args.channel_type}/arch_{args.nn_eq}/ent
 
 if (args.channel_type == "alpha_interf"):
 	models_folder = f'{models_folder_main}/{args.channel_type}_{args.alpha}/arch_{args.nn_eq}/ent_{args.entangle_weights}/lr_{args.learning_rate}'
+
+if (args.adaptivity_training == 1):
+	# find the base channel 
+	channel_list = ["AWGN", "bursty", "EPA", "EVA", "ETU", "OTA"]
+	base_channel = [s for s in channel_list if s in args.saved_model_path ]
+	# breakpoint()
+	base_channel = base_channel[0]
+	models_folder_main = f'{models_folder_main}_adapt_from_{base_channel[0]}_to_{args.channel_type}'
+	results_folder = f'{results_folder_main}_adapt_from_{base_channel[0]}_to_{args.channel_type}'
 
 if not os.path.exists(models_folder):
     os.makedirs(models_folder)
@@ -363,17 +382,17 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
 				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
     
-		# Replicate the weights by repeating for each row : FIX ME, incorrect : need to read in a different fashion
+		# Replicate the weights by repeating for each row
 		elif (args.entangle_weights == 3):
 			B_vc_vec = torch.tensor([]).to(device)
 			W_vc_vec = torch.tensor([]).to(device)
-			for im in range(m):
-				deg = chk_degrees[im]
-				B_vc_m = model.B_vc[0,im]
-				W_vc_m = model.W_vc[0,im]
-				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
-				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
-
+			for i_n in range(n):
+				for i_m in range(m):
+					if (H[i_m][i_n] > 0):
+						B_vc_m = model.B_vc[0,im]
+						W_vc_m = model.W_vc[0,im]
+						B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,1])),1)
+						W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,1])),1)
 		# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
 		elif (args.entangle_weights == 4 or args.entangle_weights == 5):
 			B_vc_vec = model.B_vc.repeat([1,m])
@@ -460,12 +479,13 @@ def compute_cv(vc, iteration, batch_size):
 			elif (args.entangle_weights == 3):
 				B_cv_vec = torch.tensor([]).to(device)
 				W_cv_vec = torch.tensor([]).to(device)
-				for im in range(m):
-					deg = chk_degrees[im]
-					B_cv_m = model.B_cv[0,im]
-					W_cv_m = model.W_cv[0,im]
-					B_cv_vec = torch.cat((B_cv_vec, B_cv_m.repeat([1,deg])),1)
-					W_cv_vec = torch.cat((W_cv_vec, W_cv_m.repeat([1,deg])),1)
+				for i_n in range(n):
+					for i_m in range(m):
+						if (H[i_m][i_n] > 0):
+							B_cv_m = model.B_cv[0,i_m]
+							W_cv_m = model.W_cv[0,i_m]
+							B_cv_vec = torch.cat((B_cv_vec, B_cv_m.repeat([1,1])),1)
+							W_cv_vec = torch.cat((W_cv_vec, W_cv_m.repeat([1,1])),1)
 
 			# Replicate the weights by repeating the entire vec for each row : FIX ME : for warp cases
 			elif (args.entangle_weights == 4 or args.entangle_weights == 5):
@@ -614,13 +634,6 @@ BERs = []
 SERs = []
 FERs = []
 loss_history = []
-
-if (args.adaptivity_training == 1):
-	# find the base channel 
-	channel_list = ["AWGN", "bursty", "EPA", "EVA", "ETU", "OTA"]
-	base_channel = [s for s in channel_list if s in args.saved_model_path ]
-	# breakpoint()
-	base_channel = base_channel[0]
 	
 if TRAINING :
 
