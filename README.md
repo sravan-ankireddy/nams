@@ -1,6 +1,6 @@
 # nams
-Interpreting Neural Min-Sum Decoders : ([Manuscript][https://drive.google.com/file/d/1Dn2Nb5ohBhQowof_sSdoMs4E5L9wBnIr/view?usp=share_link])
-[Manuscript](url)
+Interpreting Neural Min-Sum Decoders : [Manuscript](https://drive.google.com/file/d/1Dn2Nb5ohBhQowof_sSdoMs4E5L9wBnIr/view?usp=share_link)
+
 This repository includes:
 - A PyTorch implementation of augmenting min-sum decoder for linear block codes.
 - A framework to generate LTE channel simulations for EPA/EVA/ETU channels
