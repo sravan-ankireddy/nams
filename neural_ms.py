@@ -205,32 +205,32 @@ print("Now running using .... " + str(device))
 
 if (args.adaptivity_training == 1):
 	args.continue_training = 0
-
-if (args.set_model == "cv"):
-	args.cv_model == 1 and args.vc_model == 0
-elif (args.set_model == "vc"):
-	args.cv_model == 0 and args.vc_model == 1
-elif (args.set_model == "cv_vc"):
-	args.cv_model == 1 and args.vc_model == 1
-elif (args.set_model == "gw"):
-	args.cv_model == 0 and args.vc_model == 0
-
+ 
 # Chosse the appropriate data_folders
-if (args.cv_model == 1 and args.vc_model == 0):
-    models_folder_main = 'saved_models_cv'
-    results_folder_main = 'ber_data_cv'
+if (args.set_model == "cv"):
+	args.cv_model = 1
+	args.vc_model = 0
+	models_folder_main = 'saved_models_cv'
+	results_folder_main = 'ber_data_cv'
+elif (args.set_model == "vc"):
+	args.cv_model = 0
+	args.vc_model = 1
+	models_folder_main = 'saved_models_vc'
+	results_folder_main = 'ber_data_vc'
+elif (args.set_model == "cv_vc"):
+	args.cv_model = 1
+	args.vc_model = 1
+	models_folder_main = 'saved_models_cv_vc'
+	results_folder_main = 'ber_data_cv_vc'
+elif (args.set_model == "gw"): # equivalent to Gaussian approximation
+	args.cv_model = 0
+	args.vc_model = 0
+	models_folder_main = 'saved_models_gw'
+	results_folder_main = 'ber_data_gw'
 
-if (args.cv_model == 0 and args.vc_model == 1):
-    models_folder_main = 'saved_models_vc'
-    results_folder_main = 'ber_data_vc'
 
-if (args.cv_model == 1 and args.vc_model == 1):
-    models_folder_main = 'saved_models_cv_vc'
-    results_folder_main = 'ber_data_cv_vc'
-
-if (args.cv_model == 0 and args.vc_model == 0): #equivalent to Gaussian approximation
-    models_folder_main = 'saved_models_gw'
-    results_folder_main = 'ber_data_gw'
+# models_folder_main = 'saved_models_cv_epochs'
+# results_folder_main = 'ber_data_cv_epochs'
 
 results_folder = results_folder_main
 
@@ -249,10 +249,10 @@ if (args.adaptivity_training == 1):
 	results_folder = f'{results_folder_main}_adapt_from_{base_channel[0]}_to_{args.channel_type}'
 
 if not os.path.exists(models_folder):
-    os.makedirs(models_folder)
+	os.makedirs(models_folder)
 if not os.path.exists(results_folder):
-    os.makedirs(results_folder)
-    
+	os.makedirs(results_folder)
+	
 # results_folder = "ber_data_debug"
 
 if (args.decoder_type == "neural_ms"):
@@ -331,7 +331,7 @@ class NeuralNetwork(nn.Module):
 			elif (args.nn_eq == 2):
 				self.B_vc = torch.nn.Parameter(B_vc_init)
 				self.W_vc = torch.nn.Parameter(torch.ones(num_w1, num_w2))
-    
+	
 		if(args.cv_model == 0 and args.vc_model == 0): # equal to gaussian model
 			W_gw_init = torch.fmod(torch.randn([num_w1, num_w2]),2*var_W)
 			self.W_gw = torch.nn.Parameter(W_gw_init)
@@ -381,7 +381,7 @@ def compute_vc(cv, soft_input, iteration, batch_size):
 				W_vc_m = model.W_vc[0,im]
 				B_vc_vec = torch.cat((B_vc_vec, B_vc_m.repeat([1,deg])),1)
 				W_vc_vec = torch.cat((W_vc_vec, W_vc_m.repeat([1,deg])),1)
-    
+	
 		# Replicate the weights by repeating for each row
 		elif (args.entangle_weights == 3):
 			B_vc_vec = torch.tensor([]).to(device)
@@ -555,7 +555,7 @@ def marginalize(soft_input, iteration, cv, batch_size):
 	# breakpoint()
 	for i in range(0,n):
 		temp = cv[edges_m[i],:]
-		if (args.cv_model == 0 and args.vc_model == 0):
+		if (args.cv_model == 0 and args.vc_model == 0 and args.decoder_type == "neural_ms"):
 			temp = torch.tile(torch.reshape(W_gw_vec[0,start_ind:start_ind+var_degrees[i]],[-1,1]),[1,batch_size])*temp
 			start_ind = start_ind+var_degrees[i]
 		temp = torch.sum(temp,0).to(device) 
@@ -720,152 +720,155 @@ if TRAINING :
 	step = 0
 	if (args.continue_training == 1):
 		step = 19000+1
-	while step < steps:
-		# data selection/generation
-		if (args.use_offline_training_data == 1):
-			start_idx = int(step*training_batch_size/len(SNRs))
-			end_idx = int(start_idx + training_batch_size/len(SNRs))
-			snr_start_ind = int(args.eb_n0_train_lo)-int(args.eb_n0_train_lo)
-			snr_end_ind = int(args.eb_n0_train_hi)-int(args.eb_n0_train_lo)+1
-			codewords = enc_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
-			llr_in = llr_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
+  
+	num_epochs = 10
+	for epoch in range(num_epochs):
+		while step < steps:
+			# data selection/generation
+			if (args.use_offline_training_data == 1):
+				start_idx = int(step*training_batch_size/len(SNRs))
+				end_idx = int(start_idx + training_batch_size/len(SNRs))
+				snr_start_ind = int(args.eb_n0_train_lo)-int(args.eb_n0_train_lo)
+				snr_end_ind = int(args.eb_n0_train_hi)-int(args.eb_n0_train_lo)+1
+				codewords = enc_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
+				llr_in = llr_data[:,start_idx:end_idx,snr_start_ind:snr_end_ind].to(device)
 
-			# concatenate the data along the SNR dimension
-			codewords = torch.reshape(codewords,[codewords.size(0),-1])
-			llr_in = torch.reshape(llr_in,[llr_in.size(0),-1])
-		else:
-			if (args.force_all_zero == 0):
-				messages = torch.randint(0,2,(training_batch_size,k))
-				codewords = torch.matmul(torch.tensor(G,dtype=int), torch.transpose(messages,0,1)) % 2
+				# concatenate the data along the SNR dimension
+				codewords = torch.reshape(codewords,[codewords.size(0),-1])
+				llr_in = torch.reshape(llr_in,[llr_in.size(0),-1])
+			else:
+				if (args.force_all_zero == 0):
+					messages = torch.randint(0,2,(training_batch_size,k))
+					codewords = torch.matmul(torch.tensor(G,dtype=int), torch.transpose(messages,0,1)) % 2
+					# generate interference data : y_i = x_i + \alpha*x_i-1 + noise
+					codewords_interf = codewords
+					codewords_interf[:,0] = 0
+					codewords_interf[:,:-1] = codewords[:,1:]
+				else:
+					messages = torch.zeros([k,training_batch_size])
+					codewords = torch.zeros([n,training_batch_size])
+					codewords_interf = torch.zeros([n,training_batch_size])
+
+				BPSK_codewords = (codewords - 0.5) * 2.0
 				# generate interference data : y_i = x_i + \alpha*x_i-1 + noise
-				codewords_interf = codewords
-				codewords_interf[:,0] = 0
-				codewords_interf[:,:-1] = codewords[:,1:]
-			else:
-				messages = torch.zeros([k,training_batch_size])
-				codewords = torch.zeros([n,training_batch_size])
-				codewords_interf = torch.zeros([n,training_batch_size])
-
-			BPSK_codewords = (codewords - 0.5) * 2.0
-			# generate interference data : y_i = x_i + \alpha*x_i-1 + noise
-			BPSK_codewords_interf = torch.zeros_like(BPSK_codewords)
-			BPSK_codewords_interf[1:,:] = BPSK_codewords[:-1,:]
-			soft_input = torch.zeros_like(BPSK_codewords)
-			received_codewords = torch.zeros_like(BPSK_codewords)
-			sigma_vec = torch.zeros_like(BPSK_codewords)
-			SNR_vec = torch.zeros_like(BPSK_codewords)
-			llr_in = torch.zeros_like(BPSK_codewords)
-			
-			# create minibatch with codewords from multiple SNRs
-			for i in range(0,len(SNRs)):
-				sigma = calc_sigma(SNRs[i],rate)
-				noise = sigma * np.random.randn(n,training_batch_size//len(SNRs))
-				start_idx = training_batch_size*i//len(SNRs)
-				end_idx = training_batch_size*(i+1)//len(SNRs)
+				BPSK_codewords_interf = torch.zeros_like(BPSK_codewords)
+				BPSK_codewords_interf[1:,:] = BPSK_codewords[:-1,:]
+				soft_input = torch.zeros_like(BPSK_codewords)
+				received_codewords = torch.zeros_like(BPSK_codewords)
+				sigma_vec = torch.zeros_like(BPSK_codewords)
+				SNR_vec = torch.zeros_like(BPSK_codewords)
+				llr_in = torch.zeros_like(BPSK_codewords)
 				
-				# Apply channel and noise
-				exact_llr = args.exact_llr
-				FastFading = False
+				# create minibatch with codewords from multiple SNRs
+				for i in range(0,len(SNRs)):
+					sigma = calc_sigma(SNRs[i],rate)
+					noise = sigma * np.random.randn(n,training_batch_size//len(SNRs))
+					start_idx = training_batch_size*i//len(SNRs)
+					end_idx = training_batch_size*(i+1)//len(SNRs)
+					
+					# Apply channel and noise
+					exact_llr = args.exact_llr
+					FastFading = False
+					if (args.interf == 1):
+						BPSK_codewords[:,start_idx:end_idx] = BPSK_codewords[:,start_idx:end_idx] + args.alpha*BPSK_codewords_interf[:,start_idx:end_idx]
+					received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
+					llr_in[:,start_idx:end_idx] = 2*received_codewords[:,start_idx:end_idx]/(sigma**2)
+					sigma_vec[:,start_idx:end_idx] = sigma
+					SNR_vec[:,start_idx:end_idx] = SNRs[i]
+
+					llr_in = llr_in.to(device)
+					codewords = codewords.to(device)
+
+			# training starts
+			# perform gradient update for whole snr batch
+			soft_output, batch_loss = nn_decode(llr_in,training_batch_size,codewords)
+			optimizer.zero_grad()
+			batch_loss.backward()
+
+			if (args.clip_grads == 1):
+				torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+			optimizer.step()
+
+			if step % 10 == 0:
+				loss_history.append(batch_loss.item())
+				print(str(step) + " minibatches completed")
+				print ("BCE loss :")
+				print (batch_loss)
+				if (args.cv_model == 1 and args.vc_model == 0):
+					print ("B_cv : ")
+					print (model.B_cv)
+					print ("W_cv : ")
+					print (model.W_cv)
+				if (args.cv_model == 0 and args.vc_model == 1):
+					print ("B_vc : ")
+					print (model.B_vc)
+					print ("W_vc : ")
+					print (model.W_vc)
+					print ("W_ch : ")
+					print (model.W_ch)
+				if (args.cv_model == 0 and args.vc_model == 0):
+					print ("W_gw : ")
+					print (model.W_gw)
+					
+
+			saver_step = 1000
+			if (args.adaptivity_training == 1):
+				saver_step = 500
+			if (args.save_torch_model == 1 and step % saver_step == 0):
+				# store the weights
+				print("\n********* Saving the Training weights *********\n")
+				models_folder_int = models_folder + "/intermediate_models/"
+				models_folder_mat = models_folder + "/model_weights_mat/"
+				models_folder_mat_final =  models_folder + "/model_weights_mat_final/"
+	
+				if not os.path.exists(models_folder_int):
+					os.makedirs(models_folder_int)
+				if not os.path.exists(models_folder_mat):
+					os.makedirs(models_folder_mat)
+				if not os.path.exists(models_folder_mat_final):
+					os.makedirs(models_folder_mat_final)
+		
+				if (args.adaptivity_training == 1):
+					filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+				else:
+					filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
+					
+				if (args.freeze_weights == 1):
+					filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
+				
 				if (args.interf == 1):
-					BPSK_codewords[:,start_idx:end_idx] = BPSK_codewords[:,start_idx:end_idx] + args.alpha*BPSK_codewords_interf[:,start_idx:end_idx]
-				received_codewords[:,start_idx:end_idx], soft_input[:,start_idx:end_idx] = apply_channel(BPSK_codewords[:,start_idx:end_idx], sigma, args.alpha, noise, args.channel_type, FastFading, exact_llr)
-				llr_in[:,start_idx:end_idx] = 2*received_codewords[:,start_idx:end_idx]/(sigma**2)
-				sigma_vec[:,start_idx:end_idx] = sigma
-				SNR_vec[:,start_idx:end_idx] = SNRs[i]
-
-				llr_in = llr_in.to(device)
-				codewords = codewords.to(device)
-
-		# training starts
-		# perform gradient update for whole snr batch
-		soft_output, batch_loss = nn_decode(llr_in,training_batch_size,codewords)
-		optimizer.zero_grad()
-		batch_loss.backward()
-
-		if (args.clip_grads == 1):
-			torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-		optimizer.step()
-
-		if step % 10 == 0:
-			loss_history.append(batch_loss.item())
-			print(str(step) + " minibatches completed")
-			print ("BCE loss :")
-			print (batch_loss)
-			if (args.cv_model == 1 and args.vc_model == 0):
-				print ("B_cv : ")
-				print (model.B_cv)
-				print ("W_cv : ")
-				print (model.W_cv)
-			if (args.cv_model == 0 and args.vc_model == 1):
-				print ("B_vc : ")
-				print (model.B_vc)
-				print ("W_vc : ")
-				print (model.W_vc)
-				print ("W_ch : ")
-				print (model.W_ch)
-			if (args.cv_model == 0 and args.vc_model == 0):
-				print ("W_gw : ")
-				print (model.W_gw)
+					filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
 				
-
-		saver_step = 1000
-		if (args.adaptivity_training == 1):
-			saver_step = 500
-		if (args.save_torch_model == 1 and step % saver_step == 0):
-			# store the weights
-			print("\n********* Saving the Training weights *********\n")
-			models_folder_int = models_folder + "/intermediate_models/"
-			models_folder_mat = models_folder + "/model_weights_mat/"
-			models_folder_mat_final =  models_folder + "/model_weights_mat_final/"
-   
-			if not os.path.exists(models_folder_int):
-				os.makedirs(models_folder_int)
-			if not os.path.exists(models_folder_mat):
-				os.makedirs(models_folder_mat)
-			if not os.path.exists(models_folder_mat_final):
-				os.makedirs(models_folder_mat_final)
-       
-			if (args.adaptivity_training == 1):
-				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
-			else:
-				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".pt"
-				
-			if (args.freeze_weights == 1):
-				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".pt"
-			
-			if (args.interf == 1):
-				filename = models_folder_int + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights) + "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_alpha_" + str(args.alpha) + ".pt"
-			
-			torch.save(model.state_dict(), filename)
-			# save to matlab for analysis
-			if (args.cv_model == 1 and args.vc_model == 0):
-				B_cv = model.B_cv.cpu().data.numpy()
-				W_cv = model.W_cv.cpu().data.numpy()
-				weights = {'B_cv':B_cv, 'W_cv':W_cv}
-			elif (args.cv_model == 0 and args.vc_model == 1):
-				B_vc = model.B_vc.cpu().data.numpy()
-				W_vc = model.W_vc.cpu().data.numpy()
-				W_ch = model.W_ch.cpu().data.numpy()
-				weights = {'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
-			elif (args.cv_model == 1 and args.vc_model == 1):
-				B_cv = model.B_cv.cpu().data.numpy()
-				W_cv = model.W_cv.cpu().data.numpy()
-				B_vc = model.B_vc.cpu().data.numpy()
-				W_vc = model.W_vc.cpu().data.numpy()
-				W_ch = model.W_ch.cpu().data.numpy()
-				weights = {'B_cv':B_cv, 'W_cv':W_cv, 'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
-			elif (args.cv_model == 0 and args.vc_model == 0):
-				W_gw = model.W_gw.cpu().data.numpy()
-				weights = {'W_gw':W_gw}
-			if (args.adaptivity_training == 1):
-				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
-			else:
-				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
-			if (args.freeze_weights == 1):
-				filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
-			sio.savemat(filename_mat,weights)
-		# breakpoint()
-		step += 1
+				torch.save(model.state_dict(), filename)
+				# save to matlab for analysis
+				if (args.cv_model == 1 and args.vc_model == 0):
+					B_cv = model.B_cv.cpu().data.numpy()
+					W_cv = model.W_cv.cpu().data.numpy()
+					weights = {'B_cv':B_cv, 'W_cv':W_cv}
+				elif (args.cv_model == 0 and args.vc_model == 1):
+					B_vc = model.B_vc.cpu().data.numpy()
+					W_vc = model.W_vc.cpu().data.numpy()
+					W_ch = model.W_ch.cpu().data.numpy()
+					weights = {'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
+				elif (args.cv_model == 1 and args.vc_model == 1):
+					B_cv = model.B_cv.cpu().data.numpy()
+					W_cv = model.W_cv.cpu().data.numpy()
+					B_vc = model.B_vc.cpu().data.numpy()
+					W_vc = model.W_vc.cpu().data.numpy()
+					W_ch = model.W_ch.cpu().data.numpy()
+					weights = {'B_cv':B_cv, 'W_cv':W_cv, 'B_vc':B_vc, 'W_vc':W_vc, 'W_ch':W_ch}
+				elif (args.cv_model == 0 and args.vc_model == 0):
+					W_gw = model.W_gw.cpu().data.numpy()
+					weights = {'W_gw':W_gw}
+				if (args.adaptivity_training == 1):
+					filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_adapt_from_" + base_channel + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				else:
+					filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + ".mat"
+				if (args.freeze_weights == 1):
+					filename_mat = models_folder_mat + "nams_" + str(args.coding_scheme) + "_" + str(n) + "_" + str(k) + "_st_" + str(step) + "_lr_" +str(args.learning_rate) + "_" + str(args.channel_type) + "_ent_" + str(args.entangle_weights)+ "_nn_eq_" + str(args.nn_eq) + "_relu_" + str(args.relu) + "_max_iter_" + str(args.num_iterations) + "_" + str(int(args.eb_n0_train_lo)) + "_" + str(int(args.eb_n0_train_hi)) + "_ff_" + str(args.freeze_fraction) + ".mat"
+				sio.savemat(filename_mat,weights)
+			# breakpoint()
+			step += 1
 
 	print("Trained decoder on " + str(step) + " minibatches.\n")
 	if (step > 0):
@@ -1129,7 +1132,7 @@ if TESTING :
 if (args.channel_type == 'rayleigh_fast'):
 	chan_name =  args.channel_type + "_" + str(args.exact_llr)
 elif (args.channel_type == 'alpha_interf'):
-    chan_name =  args.channel_type + "_" + str(args.alpha)
+	chan_name =  args.channel_type + "_" + str(args.alpha)
 else:
 	chan_name = args.channel_type
 

@@ -30,7 +30,7 @@ def run_sim(h,g,set_model,steps,lr,relu,nn_eq,quant_wt,max_iter,coding,chan,alph
 	" & CUDA_VISIBLE_DEVICES=0,1,2,3 python neural_ms.py -save_ber_to_mat 1 -use_offline_testing_data " + offline_test + " -set_model " + set_model + " -saved_model_path " + models[ent_id[2]] + " -use_saved_model 1 -adaptivity_training " + adapt + " -freeze_weights " + freeze + " -freeze_fraction " + ff + " -quantize_weights " + quant_wt + " -entangle_weights " + str(ent_id[2]) + " -steps " + steps + " -learning_rate " + lr + " -relu " + relu  + " -nn_eq " + nn_eq + " -num_iterations " + max_iter + " -coding_scheme " + coding + " -channel_type " + chan + " -alpha " + alpha + " -gpu_index " + gpu_id[2] + " -decoder_type neural_ms -testing_batch_size " + testing_batch_size + " -eb_n0_lo " + eb_n0_lo + " -eb_n0_hi " + eb_n0_hi + " -H_filename "+ h + " -G_filename " + g)# +\
 	
 
-adapt = "1"
+adapt = "0"
 freeze = "0"
 ff = "0.2"
 interf = "0"
@@ -54,8 +54,8 @@ G_filename = ['H_G_mat/G_BCH_63_36.gmat']
 
 # if (args.channel_type == "alpha_interf"):
 
-models_folder_main = "saved_models_cv"
-set_model = "cv"
+set_model = "gw"
+models_folder_main = "saved_models_" + set_model
 
 lr_list = ["0.005"]
 max_iter = "5"
