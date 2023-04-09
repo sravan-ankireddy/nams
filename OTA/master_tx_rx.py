@@ -21,7 +21,7 @@ N_captures = 1
 # rx_gain_vec = np.arange(2,0.5,-0.5)
 
 tx_gain_vec = np.arange(0,-1,-1)
-rx_start = 5
+rx_start = 10
 rx_end = rx_start - 0.5
 rx_gain_vec = np.arange(rx_start,rx_end,-0.5)
 

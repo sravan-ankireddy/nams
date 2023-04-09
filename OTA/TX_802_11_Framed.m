@@ -23,6 +23,9 @@ function TX_802_11_Framed(seed)
         if (code == "LDPC" || code == "BCH")
             encoded_data = ldpcEncode(data_input,ldpcEncCfg);
             encoder_data = [encoded_data(:); zeros(extra_bits, 1)];
+        elseif (code == "Turbo")
+            encoded_data = turbo_encode(data_input, enc_type, no_of_blocks, msg_len, rate);
+            encoder_data = [encoded_data(:); zeros(extra_bits, 1)];         
         else
             rel = rs(rs < code_len+1);
             data_pos = sort(rel(1:msg_len));

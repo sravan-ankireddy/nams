@@ -3,7 +3,7 @@
 % Parameters
 
 
-code = "BCH"; % BCH/LDPC or Polar
+code = "Turbo"; % BCH/LDPC/Conv/Turbo or Polar
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 no_of_frames = 20;
@@ -18,17 +18,7 @@ signal_field_symbols = no_signal_symbols * no_of_subcarriers;
 mod_order = 2;
 bit_per_symbol = log2(mod_order);
 total_no_bits = total_msg_symbols * bit_per_symbol;
-% enc_type = 'turbo'; %'convolutional'
-% dec_type = 'turbo'; %'convolutional' 'MAP'
 
-% msg_len = 36; % Convolutional Code Parameter
-% term_bits = 4; % 0;
-% rate = 36/63; %1/2; % 1/3;
-% code_len = 63;%(block_len + term_bits) / rate;
-
-% LDPC Params
-% load('data_files/par_gen_data/G_BCH_63_36.mat','G');
-% load('data_files/par_gen_data/H_BCH_63_36.mat','H');
 if (code == "BCH")
     load('data_files/par_gen_data/G_BCH_63_36.mat','G');
     load('data_files/par_gen_data/H_BCH_63_36.mat','H');
@@ -59,6 +49,22 @@ if (code == "Polar")
 end
 
 rate = msg_len/code_len;
+
+% Turbo code config
+if (code == "Turbo")
+    enc_type = 'turbo'; %'convolutional'
+    dec_type = 'turbo'; %'convolutional' 'MAP'
+elseif (code == "Conv")
+    enc_type = 'convolutional';
+    dec_type = 'convolutional';
+end
+
+if (code == "Turbo" || code == "Conv")
+    msg_len = 200; % Convolutional Code Parameter
+    term_bits = 4;
+    rate = 1/3;
+    code_len = (msg_len + term_bits) / rate;
+end
 
 no_of_blocks = floor(total_no_bits / code_len);%(block_len + term_bits));
 encoded_no_bits = msg_len * no_of_blocks;

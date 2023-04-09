@@ -138,8 +138,15 @@ function RX_802_11_Framed()
             bit_err = biterr(msg_est, msg_data) / encoded_no_bits;
             frame_error(n_detect, 1) = bit_err;
             fprintf("Frame: %d  SNR:  %.2f  decoded BER: %1.6f\n", frame_num, snr_estimate, bit_err);
+        elseif (code == "Turbo")
+            msg_est = turbo_decode(demod_data, dec_type, no_of_blocks, msg_len);
+            msg_data = open('data_files/ota_data/msg_data.mat');
+            msg_data = msg_data.msg_data(:, :, frame_num + 1);
+            bit_err = biterr(msg_est, msg_data) / encoded_no_bits;
+            frame_error(n_detect, 1) = bit_err;
+            fprintf("Frame: %d  SNR:  %.2f  decoded BER: %1.6f\n", frame_num, snr_estimate, bit_err);
         else
-            % Raw estimate
+            % Raw estimate - can be used for debugging decoder
             code_est = double(demod_data < 0);
             code_data = open('data_files/ota_data/enc_data.mat');
             code_data = code_data.enc_data(:, :, frame_num + 1);
