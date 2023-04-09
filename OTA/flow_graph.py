@@ -52,7 +52,7 @@ class fm_block(gr.top_block):
 		# Blocks : Sink - TX, Source - Rx
 		##################################################
 		self.uhd_usrp_source_0 = uhd.usrp_source(
-			",".join(("addr=192.168.10.2", "")),
+			",".join(("addr=192.168.20.2", "")),
 			uhd.stream_args(
 				cpu_format="fc32",
 				args="",
@@ -68,7 +68,7 @@ class fm_block(gr.top_block):
 		self.uhd_usrp_source_0.set_auto_dc_offset(True, 0)
 		self.uhd_usrp_source_0.set_auto_iq_balance(True, 0)
 		self.uhd_usrp_sink_0 = uhd.usrp_sink(
-			",".join(("addr=192.168.20.2", "")),
+			",".join(("addr=192.168.10.2", "")),
 			uhd.stream_args(
 				cpu_format="fc32",
 				args="",

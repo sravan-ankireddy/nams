@@ -4,11 +4,11 @@ from datetime import date
 import os
 import scipy.io as sio
 import pickle as pkl
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 # from Sanity import check_dataset
 from tqdm import tqdm
-from data_utils import save_datafiles, plot_histogram
+from data_utils import save_datafiles
 
 data_generate = True
 sanity_check = True
@@ -16,12 +16,12 @@ OTA_data = True
 Frame_802_11 = True
 save_data = True
 
-N_captures = 10
+N_captures = 1
 # tx_gain_vec = np.arange(10,-5,-1)
 # rx_gain_vec = np.arange(2,0.5,-0.5)
 
-tx_gain_vec = np.arange(20,11,-1)
-rx_start = 10
+tx_gain_vec = np.arange(0,-1,-1)
+rx_start = 5
 rx_end = rx_start - 0.5
 rx_gain_vec = np.arange(rx_start,rx_end,-0.5)
 
@@ -66,7 +66,7 @@ for i_r in tqdm(range(rx_gain_vec.size)):
                 [],
             )
 
-        tx_gain = np.float(tx_gain_vec[i_t])
+        tx_gain = float(tx_gain_vec[i_t])
 
         for i in tqdm(range(N_captures)):
             # Generate TX

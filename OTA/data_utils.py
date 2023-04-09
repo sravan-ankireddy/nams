@@ -1,7 +1,8 @@
 import numpy as np
 import pickle as pkl
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import scipy.io as sio
+import os
 
 def save_datafiles(
     file_name,
@@ -56,23 +57,32 @@ def save_datafiles(
     )
     N_f = str(np.shape(Encoder_Output)[1])
     K_f = str(np.shape(Data_Input)[1])
+    
+    ota_bins_folder = "data_files/ota_data/ota_data_bins/"
+    ota_blocks_folder = "data_files/ota_data/ota_data_blocks/"
+
+    if not os.path.exists(ota_bins_folder):
+        os.makedirs(ota_bins_folder)
+    if not os.path.exists(ota_blocks_folder):
+        os.makedirs(ota_blocks_folder)
+    
     if (bin):
         # saving to mat file - per ber err range
-        filename = "data_files/ota_data/ota_data_bins/ota_data_" + N_f + "_" + K_f + "_bin_" + str(r) + "_gains_"+ str(tx_gain) + "_" + str(rx_gain) + ".mat"
+        filename = f"{ota_bins_folder}/ota_data_{N_f}_{K_f}_bin_{r}_gains_{tx_gain}_{rx_gain}.mat"        
         sio.savemat(filename,ota_data)
     else:
         # saving to mat file - full data - per tx power range
-        filename = "data_files/ota_data/ota_data_blocks/ota_data_" + N_f + "_" + K_f + "_" + str(tx_gain) + "_" + str(rx_gain) + ".mat"
+        filename = f"{ota_blocks_folder}/ota_data_{N_f}_{K_f}_blocks_{r}_gains_{tx_gain}_{rx_gain}.mat"
         sio.savemat(filename,ota_data)
     return W, X, Y, Z
 
 
-def plot_histogram(file_name, X, Z, berHi, berLo):
-    plt.figure()
-    Z = np.array(Z).flatten()
-    E = np.array(X).flatten()
-    plt.hist(Z[E == 1], 1000, color="red", alpha=0.3)
-    plt.hist(Z[E == 0], 1000, color="blue", alpha=0.3)
-    plt.grid(True)
-    plt.xlim([-50, 50])
-    plt.savefig(file_name + "/Figures/Data_" + str(berHi) + "_" + str(berLo) + ".png")
+# def plot_histogram(file_name, X, Z, berHi, berLo):
+    # plt.figure()
+    # Z = np.array(Z).flatten()
+    # E = np.array(X).flatten()
+    # plt.hist(Z[E == 1], 1000, color="red", alpha=0.3)
+    # plt.hist(Z[E == 0], 1000, color="blue", alpha=0.3)
+    # plt.grid(True)
+    # plt.xlim([-50, 50])
+    # plt.savefig(file_name + "/Figures/Data_" + str(berHi) + "_" + str(berLo) + ".png")
