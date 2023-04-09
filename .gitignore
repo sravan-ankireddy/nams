@@ -2,3 +2,5 @@ generate_lte_data/lte_data/*
 OTA/FeedbackAll/Python/Automation/Data_Files/*
 OTA/data_files/ota_data/*
 OTA/Datasets/*
+OTA/RX.bin
+OTA/TX.bin
