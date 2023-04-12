@@ -3,7 +3,7 @@
 % Parameters
 
 
-code = "Turbo"; % BCH/LDPC/Conv/Turbo or Polar
+code = "BCH"; % BCH/LDPC/Conv/Turbo or Polar
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 no_of_frames = 20;
