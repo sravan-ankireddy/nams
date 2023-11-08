@@ -1,5 +1,12 @@
 # nams
-Interpreting Neural Min-Sum Decoders : [Manuscript](https://drive.google.com/file/d/1Dn2Nb5ohBhQowof_sSdoMs4E5L9wBnIr/view?usp=share_link)
+Source code for the ICC'23 paper : [Interpreting Neural Min-Sum Decoders](https://ieeexplore.ieee.org/abstract/document/10279074)
+
+<u> Abstract<u>: In decoding linear block codes, it was shown that noticeable reliability gains can be achieved by introducing learnable parameters to the Belief Propagation (BP) decoder. 
+Despite the success of these methods, there are two key open problems. The first is the lack of interpretation of the learned weights, and the other is the lack of analysis for non-AWGN channels. 
+In this work, we aim to bridge this gap by providing insights into the weights learned and their connection to the structure of the underlying code. 
+We show that the weights are heavily influenced by the distribution of short cycles in the code.
+We next look at the performance of these decoders in non-AWGN channels, both synthetic and over-the-air channels, and study the complexity vs. performance trade-offs, demonstrating that increasing the number of parameters helps significantly in complex channels. 
+Finally, we show that the decoders with learned weights achieve higher reliability than those with weights optimized analytically under the Gaussian approximation. </u>
 
 This repository includes:
 - A PyTorch implementation of augmenting min-sum decoder for linear block codes.
