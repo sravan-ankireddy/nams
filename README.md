@@ -1,7 +1,7 @@
 # nams
 Source code for the ICC'23 paper : [Interpreting Neural Min-Sum Decoders](https://ieeexplore.ieee.org/abstract/document/10279074)
 
-<u> Abstract</u>: In decoding linear block codes, it was shown that noticeable reliability gains can be achieved by introducing learnable parameters to the Belief Propagation (BP) decoder. 
+<ins> Abstract</ins>: In decoding linear block codes, it was shown that noticeable reliability gains can be achieved by introducing learnable parameters to the Belief Propagation (BP) decoder. 
 Despite the success of these methods, there are two key open problems. The first is the lack of interpretation of the learned weights, and the other is the lack of analysis for non-AWGN channels. 
 In this work, we aim to bridge this gap by providing insights into the weights learned and their connection to the structure of the underlying code. 
 We show that the weights are heavily influenced by the distribution of short cycles in the code.
